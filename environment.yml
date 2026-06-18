@@ -1,0 +1,13 @@
+name: nutrify
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - streamlit
+      - pillow
+      - google-cloud-storage
+      - google-api-python-client
+      - google-auth
+      - rich
