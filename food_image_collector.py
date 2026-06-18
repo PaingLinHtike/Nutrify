@@ -53,7 +53,11 @@ if submit_button:
     # Store metadata in Google Sheets
     img_width, img_height = image.size
     image_info = [unique_image_id, current_time, img_height, img_width, label]
-    response = append_values_to_gsheet([image_info])
+    try:
+        response = append_values_to_gsheet([image_info])
+    except PermissionError as error:
+        st.error(str(error))
+        st.stop()
 
     print("Google Sheets Response:", response)
     print("Image Info:", image_info)

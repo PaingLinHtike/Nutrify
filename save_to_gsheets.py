@@ -11,6 +11,7 @@ from functools import lru_cache
 from typing import List
 
 from googleapiclient import discovery
+from googleapiclient.errors import HttpError
 from google_credentials import load_service_account_credentials
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
@@ -34,7 +35,7 @@ INSERT_DATA_OPTION = "INSERT_ROWS"
 
 
 @lru_cache
-def _sheets_service():
+def _sheets_credentials():
     credentials = load_service_account_credentials(
         ("google-sheets-creds.json", "google-drive-creds.json"),
         SHEETS_SECRET_NAMES,
@@ -46,6 +47,16 @@ def _sheets_service():
             "Streamlit secrets or keep an ignored local credentials file."
         )
 
+    return credentials
+
+
+def sheets_service_account_email():
+    return getattr(_sheets_credentials(), "service_account_email", "unknown")
+
+
+@lru_cache
+def _sheets_service():
+    credentials = _sheets_credentials()
     return discovery.build(
         'sheets',
         'v4',
@@ -74,7 +85,16 @@ def append_values_to_gsheet(values_to_add : List[List[str]]):
         body=value_range_body
     )
 
-    response = request.execute()
+    try:
+        response = request.execute()
+    except HttpError as error:
+        if error.resp.status == 403:
+            raise PermissionError(
+                "Google Sheets rejected the service account "
+                f"{sheets_service_account_email()}. Share the spreadsheet "
+                "with this email as an Editor, then try again."
+            ) from error
+        raise
 
     # pprint (response)
     return(response)
