@@ -15,7 +15,11 @@ def _storage_client():
     if credentials:
         return storage.Client(credentials=credentials, project=credentials.project_id)
 
-    return storage.Client()
+    raise RuntimeError(
+        "Google Cloud Storage credentials are not configured. Add a "
+        "[gcp_service_account] or [gcp_service_account_storage] section "
+        "to Streamlit Secrets, then reboot the app."
+    )
 
 def _bucket_name(bucket_name):
     return bucket_name.removeprefix("gs://").rstrip("/")

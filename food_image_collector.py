@@ -48,7 +48,11 @@ if submit_button:
     # Upload the image to Google Cloud Storage
     bucket_name = "food-vision-project-images"
     destination_blob_name = f"{unique_image_id}.jpg"
-    upload_blob(bucket_name, uploaded_images, destination_blob_name, content_type="image/jpeg")
+    try:
+        upload_blob(bucket_name, uploaded_images, destination_blob_name, content_type="image/jpeg")
+    except RuntimeError as error:
+        st.error(str(error))
+        st.stop()
     
     # Store metadata in Google Sheets
     img_width, img_height = image.size
