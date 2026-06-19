@@ -18,17 +18,21 @@ def display_image(img):
     if img is not None:
         image = Image.open(img)
         print("Displaying Image....")
-        st.image(image, caption="Uploaded Image", width=400)
+        st.image(image, caption="Uploaded Image", width=300)
         return image 
     return None
 
 image = display_image(uploaded_images)   
 
 # Create Image Label Form
+st.write("### Image Labeling")
 form = st.form(key = "label_submit_form", clear_on_submit=True)
-label = form.text_input("What food(s) are in the image you uploaded?:", max_chars=200)
+label = form.text_input("What food(s) are in the image you uploaded? \
+                        You can enter text like 'pizza', 'burger', etc.:", max_chars=200)
+country = form.text_input("Which country is this food from? (optional)", max_chars=100)
+email = form.text_input("Your email (optional, for updates on the project)", max_chars=100, autocomplete="email")
 
-st.write("If you click upload image, your image will be stored on \
+form.markdown("**Note:** If you click upload image, your image will be stored on \
         Nutrify servers and used to create the largest food image database \
         in the world!")
 submit_button = form.form_submit_button("Upload Image", help="Click to upload the image and label to Nutrify server.")
@@ -56,7 +60,7 @@ if submit_button:
     
     # Store metadata in Google Sheets
     img_width, img_height = image.size
-    image_info = [unique_image_id, current_time, img_height, img_width, label]
+    image_info = [unique_image_id, current_time, img_height, img_width, email, country, label]
     try:
         response = append_values_to_gsheet([image_info])
     except (PermissionError, RuntimeError) as error:
@@ -66,4 +70,4 @@ if submit_button:
     print("Google Sheets Response:", response)
     print("Image Info:", image_info)
 
-    st.success("Image uploaded successfully!")
+    st.success("Image uploaded successfully! Thank You🙏")
