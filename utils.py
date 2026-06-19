@@ -1,5 +1,6 @@
 import uuid
 import os
+from google.api_core.exceptions import Forbidden, GoogleAPIError, NotFound
 from image_uploader import _storage_client, _bucket_name
 
 # Upload a file to the bucket. 
@@ -14,11 +15,26 @@ def upload_blob(bucket_name, source_file, destination_blob_name, content_type=No
     bucket = storage_client.bucket(_bucket_name(bucket_name))
     blob = bucket.blob(destination_blob_name)
 
-    if isinstance(source_file, (str, os.PathLike)):
-        blob.upload_from_filename(str(source_file), content_type=content_type)
-    else:
-        source_file.seek(0)
-        blob.upload_from_file(source_file, content_type=content_type, rewind=True)
+    try:
+        if isinstance(source_file, (str, os.PathLike)):
+            blob.upload_from_filename(str(source_file), content_type=content_type)
+        else:
+            source_file.seek(0)
+            blob.upload_from_file(source_file, content_type=content_type, rewind=True)
+    except Forbidden as error:
+        raise RuntimeError(
+            "Google Cloud Storage rejected the configured service account. "
+            f"Grant it permission to write to bucket {bucket.name}."
+        ) from error
+    except NotFound as error:
+        raise RuntimeError(
+            f"Google Cloud Storage bucket {bucket.name} was not found."
+        ) from error
+    except GoogleAPIError as error:
+        raise RuntimeError(
+            "Google Cloud Storage upload failed. Check the bucket name and "
+            "service-account permissions."
+        ) from error
 
     print(f"File uploaded to gs://{bucket.name}/{destination_blob_name}.")
 

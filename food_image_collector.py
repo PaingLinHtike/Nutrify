@@ -59,7 +59,7 @@ if submit_button:
     image_info = [unique_image_id, current_time, img_height, img_width, label]
     try:
         response = append_values_to_gsheet([image_info])
-    except PermissionError as error:
+    except (PermissionError, RuntimeError) as error:
         st.error(str(error))
         st.stop()
 
