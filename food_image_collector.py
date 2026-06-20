@@ -26,7 +26,6 @@ image = display_image(uploaded_images)
 
 # Create Image Label Form
 st.write("### Image Labeling")
-st.write("# TESTING VERSION")
 
 form = st.form(key = "label_submit_form", clear_on_submit=True)
 label = form.text_input("What food(s) are in the image you uploaded? \

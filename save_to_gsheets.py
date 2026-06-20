@@ -9,7 +9,7 @@ https://console.developers.google.com/apis/api/sheets
 """
 from functools import lru_cache
 from typing import List
-
+import os
 from googleapiclient import discovery
 from googleapiclient.errors import HttpError
 from google_credentials import load_service_account_credentials
@@ -22,8 +22,11 @@ SHEETS_SECRET_NAMES = (
 )
 
 # The ID of the spreadsheet to update.
-# SPREADSHEET_ID = "1iMrR8XG0r38oqTcZChZAo6Er5lZOrla7vs8m-78kfqY" # Main Spreadsheet
-SPREADSHEET_ID = "1aANaXNATj3jDbSvLVpcCV9FfzYZ0lgDVCUk5U5iSTZc" # Dev Spreadsheet for testing
+if os.environ.get("ENVIRONMENT") == "TEST_NUTRIFY_ENV_VAR":
+    print("Using TEST Spreadsheet")
+    SPREADSHEET_ID = "1aANaXNATj3jDbSvLVpcCV9FfzYZ0lgDVCUk5U5iSTZc" # Dev Spreadsheet for testing
+else:    
+    SPREADSHEET_ID = "1iMrR8XG0r38oqTcZChZAo6Er5lZOrla7vs8m-78kfqY" # Main Spreadsheet
 
 # Values will be appended after the last row of the table.
 RANGE_ = "Sheet1!A:E"
