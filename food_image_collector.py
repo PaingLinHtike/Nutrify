@@ -26,6 +26,7 @@ image = display_image(uploaded_images)
 
 # Create Image Label Form
 st.write("### Image Labeling")
+
 form = st.form(key = "label_submit_form", clear_on_submit=True)
 label = form.text_input("What food(s) are in the image you uploaded? \
                         You can enter text like 'pizza', 'burger', etc.:", max_chars=200)
@@ -50,10 +51,10 @@ if submit_button:
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Upload the image to Google Cloud Storage
-    bucket_name = "food-vision-project-images"
+    # bucket_name = "food-vision-project-images"
     destination_blob_name = f"{unique_image_id}.jpg"
     try:
-        upload_blob(bucket_name, uploaded_images, destination_blob_name, content_type="image/jpeg")
+        upload_blob(uploaded_images, destination_blob_name, content_type="image/jpeg")
     except RuntimeError as error:
         st.error(str(error))
         st.stop()
