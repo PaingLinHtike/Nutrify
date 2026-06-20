@@ -22,10 +22,11 @@ SHEETS_SECRET_NAMES = (
 )
 
 # The ID of the spreadsheet to update.
-if os.environ.get("ENVIRONMENT") == "TEST_NUTRIFY_ENV_VAR":
+if os.getenv("TEST_NUTRIFY_ENV_VAR") == "True":
     print("Using TEST Spreadsheet")
     SPREADSHEET_ID = "1aANaXNATj3jDbSvLVpcCV9FfzYZ0lgDVCUk5U5iSTZc" # Dev Spreadsheet for testing
 else:    
+    print("Using MAIN Spreadsheet")
     SPREADSHEET_ID = "1iMrR8XG0r38oqTcZChZAo6Er5lZOrla7vs8m-78kfqY" # Main Spreadsheet
 
 # Values will be appended after the last row of the table.

@@ -4,10 +4,11 @@ from google.api_core.exceptions import Forbidden, GoogleAPIError, NotFound
 from image_uploader import _storage_client, _bucket_name
 
 # Set the bucket name based on the environment variable
-if os.environ.get("ENVIRONMENT") == "TEST_NUTRIFY_ENV_VAR":
+if os.getenv("TEST_NUTRIFY_ENV_VAR") == "True":
     print("Using TEST Storage Bucket")
     bucket_name = "food-vision-project-images-test" # Dev Storage for testing
 else:
+    print("Using MAIN Storage Bucket")
     bucket_name = "food-vision-project-images" # Main Storage
 
 # Upload a file to the bucket. 
