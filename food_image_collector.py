@@ -50,10 +50,10 @@ if submit_button:
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Upload the image to Google Cloud Storage
-    bucket_name = "food-vision-project-images"
+    # bucket_name = "food-vision-project-images"
     destination_blob_name = f"{unique_image_id}.jpg"
     try:
-        upload_blob(bucket_name, uploaded_images, destination_blob_name, content_type="image/jpeg")
+        upload_blob(uploaded_images, destination_blob_name, content_type="image/jpeg")
     except RuntimeError as error:
         st.error(str(error))
         st.stop()
