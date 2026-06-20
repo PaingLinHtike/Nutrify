@@ -22,7 +22,8 @@ SHEETS_SECRET_NAMES = (
 )
 
 # The ID of the spreadsheet to update.
-SPREADSHEET_ID = "1iMrR8XG0r38oqTcZChZAo6Er5lZOrla7vs8m-78kfqY"
+# SPREADSHEET_ID = "1iMrR8XG0r38oqTcZChZAo6Er5lZOrla7vs8m-78kfqY" # Main Spreadsheet
+SPREADSHEET_ID = "1aANaXNATj3jDbSvLVpcCV9FfzYZ0lgDVCUk5U5iSTZc" # Dev Spreadsheet for testing
 
 # Values will be appended after the last row of the table.
 RANGE_ = "Sheet1!A:E"
