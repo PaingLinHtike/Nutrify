@@ -12,8 +12,10 @@ traceback.install()
 st.title("Food Vision Image Collector 🍔")
 st.write("Upload images of food to help us build a delicious dataset!")
 
-# Increase upload size
-uploaded_images = st.file_uploader("Upload an image of food", type=["jpg", "jpeg", "png"], max_upload_size=200)
+if "uploader_key" not in st.session_state:
+    st.session_state.uploader_key = 0
+
+uploaded_images = st.file_uploader("Upload an image of food", type=["jpg", "jpeg", "png"], max_upload_size=200, key=f"uploaded_images_{st.session_state.uploader_key}")
 
 
 # Display the uploaded image if available
@@ -33,7 +35,7 @@ with st.form(key="label_submit_form", clear_on_submit=True):
     st.write("### Image Labeling")
     label = st.text_input(
         "What food(s) are in the image you uploaded? \
-                            You can enter text like 'pizza', 'burger', etc.:",
+                            You can enter text like 'pizza', 'burger', etc:",
         max_chars=200,
         icon="🍔",
         placeholder="Burger",
@@ -52,7 +54,9 @@ with st.form(key="label_submit_form", clear_on_submit=True):
         placeholder="user@gmail.com",
     )
 
-    st.info("**Note:** If you click upload image, your image will be stored on. Nutrify servers and used to create the largest food image database in the world!")
+    st.info("**Note:** If you click upload image, your image will be stored on \
+           **Nutrify** servers and used to create the largest \
+            food image database in the world!")
     submit_button = st.form_submit_button(
         "Upload Image",
         help="Click to upload the image and label to Nutrify server.",
@@ -105,6 +109,15 @@ if submit_button:
     print("Image Info:", image_info)
 
     st.success("Image uploaded successfully! Thank You🙏")
+
+    # Remove Image after being Uploaded
+    if "uploaded_images" in st.session_state:
+        del st.session_state["uploaded_images"]
+
+    # Remove Image File after being Uploaded
+    st.session_state.uploader_key += 1
+
+    st.rerun()
 
 st.write("## FAQ")
 with st.expander("What happens to my image?"):
