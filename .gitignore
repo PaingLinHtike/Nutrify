@@ -178,5 +178,4 @@ google-*-creds.json
 .streamlit/*
 !.streamlit/config.toml
 !.streamlit/secrets.example.toml
-images/
 food-vision/
