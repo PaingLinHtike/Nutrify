@@ -90,15 +90,8 @@ if submit_button:
 
     # Store metadata in Google Sheets
     img_width, img_height = image.size
-    image_info = [
-        unique_image_id,
-        current_time,
-        img_height,
-        img_width,
-        email,
-        country,
-        label,
-    ]
+    image_name = uploaded_images.name
+    image_info = [unique_image_id, current_time, img_height, img_width, email, country, label, image_name]
     try:
         response = append_values_to_gsheet([image_info])
     except (PermissionError, RuntimeError) as error:
