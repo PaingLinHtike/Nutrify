@@ -179,3 +179,4 @@ google-*-creds.json
 !.streamlit/config.toml
 !.streamlit/secrets.example.toml
 food-vision/
+data/100_foods
