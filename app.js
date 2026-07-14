@@ -29,9 +29,15 @@ const foodSelectedLabel = document.getElementById("foodSelectedLabel");
 const foodTagRemove = document.getElementById("foodTagRemove");
 const btnSubmitCorrection = document.getElementById("btnSubmitCorrection");
 const nutritionCard = document.getElementById("nutritionCard");
-const nutritionProtein = document.getElementById("nutritionProtein");
-const nutritionFat = document.getElementById("nutritionFat");
-const nutritionCarbs = document.getElementById("nutritionCarbs");
+const nCalories = document.getElementById("nCalories");
+const nProtein = document.getElementById("nProtein");
+const nFat = document.getElementById("nFat");
+const nCarbs = document.getElementById("nCarbs");
+const barProtein = document.getElementById("barProtein");
+const barFat = document.getElementById("barFat");
+const barCarbs = document.getElementById("barCarbs");
+const nHealthScore = document.getElementById("nHealthScore");
+const nHealthFill = document.getElementById("nHealthFill");
 const metaForm = document.getElementById("metaForm");
 const metadataForm = document.getElementById("metadataForm");
 const finalLabel = document.getElementById("finalLabel");
@@ -311,25 +317,64 @@ function showResults(data) {
 
 // ── Nutrition lookup map (client-side copy) ────────────────────────────
 const NUTRITION_MAP = {
-  apple: { protein: 0.2, fat: 0.2, carbs: 14.8 },
-  banana: { protein: 0.7, fat: 0.3, carbs: 23.0 },
-  beef: { protein: 27.3, fat: 11.4, carbs: 0.0 },
-  blueberries: { protein: 0.7, fat: 0.3, carbs: 14.5 },
-  carrots: { protein: 0.8, fat: 0.5, carbs: 7.9 },
-  chicken_wings: { protein: 23.9, fat: 6.0, carbs: 0.0 },
-  egg: { protein: 48.1, fat: 39.8, carbs: 1.9 },
-  honey: { protein: 0.3, fat: 0.0, carbs: 82.4 },
-  mushrooms: { protein: 2.9, fat: 0.4, carbs: 4.1 },
-  strawberries: { protein: 0.6, fat: 0.2, carbs: 7.6 },
+  apple: { protein: 0.2, fat: 0.2, carbs: 14.8, calories: 56, healthScore: 9 },
+  banana: { protein: 0.7, fat: 0.3, carbs: 23.0, calories: 88, healthScore: 9 },
+  beef: { protein: 27.3, fat: 11.4, carbs: 0.0, calories: 219, healthScore: 9 },
+  chicken_wings: {
+    protein: 23.9,
+    fat: 6.0,
+    carbs: 0.0,
+    calories: 156,
+    healthScore: 9,
+  },
+  carrots: { protein: 0.8, fat: 0.5, carbs: 7.9, calories: 37, healthScore: 9 },
+  egg: { protein: 48.1, fat: 39.8, carbs: 1.9, calories: 576, healthScore: 5 },
+  mushrooms: {
+    protein: 2.9,
+    fat: 0.4,
+    carbs: 4.1,
+    calories: 25,
+    healthScore: 9,
+  },
+  strawberries: {
+    protein: 0.6,
+    fat: 0.2,
+    carbs: 7.6,
+    calories: 31,
+    healthScore: 9,
+  },
 };
 
 function showNutritionCard(foodName) {
   const key = foodName.toLowerCase().replace(/\s+/g, "_");
-  const nutrition = NUTRITION_MAP[key];
-  if (nutrition) {
-    nutritionProtein.textContent = nutrition.protein.toFixed(1);
-    nutritionFat.textContent = nutrition.fat.toFixed(1);
-    nutritionCarbs.textContent = nutrition.carbs.toFixed(1);
+  const n = NUTRITION_MAP[key];
+  if (n) {
+    // Calories
+    nCalories.textContent = n.calories;
+    // Macros
+    nProtein.textContent = n.protein.toFixed(1) + "g";
+    nFat.textContent = n.fat.toFixed(1) + "g";
+    nCarbs.textContent = n.carbs.toFixed(1) + "g";
+    // Macro bar widths (relative to max 50g protein, 50g fat, 100g carbs)
+    const pct = (v, max) => Math.min((v / max) * 100, 100);
+    barProtein.style.width = pct(n.protein, 50) + "%";
+    barFat.style.width = pct(n.fat, 50) + "%";
+    barCarbs.style.width = pct(n.carbs, 100) + "%";
+    // Health Score
+    const score = n.healthScore;
+    nHealthScore.textContent = score + "/10";
+    nHealthFill.style.width = (score / 10) * 100 + "%";
+    // Color by score
+    if (score >= 8) {
+      nHealthFill.style.background = "linear-gradient(90deg, #22c55e, #16a34a)";
+      nHealthScore.style.color = "#16a34a";
+    } else if (score >= 5) {
+      nHealthFill.style.background = "linear-gradient(90deg, #fbbf24, #f59e0b)";
+      nHealthScore.style.color = "#d97706";
+    } else {
+      nHealthFill.style.background = "linear-gradient(90deg, #f87171, #ef4444)";
+      nHealthScore.style.color = "#dc2626";
+    }
     nutritionCard.classList.remove("hidden");
   } else {
     nutritionCard.classList.add("hidden");

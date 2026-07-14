@@ -91,22 +91,46 @@
 
           <!-- ═══ Nutrition Card ═══ -->
           <div class="nutrition-card hidden" id="nutritionCard">
-            <div class="nutrition-header">
-              <span class="nutrition-title">🥗 Nutrition Facts</span>
-              <span class="nutrition-subtitle">per 100g</span>
+            <!-- Calories -->
+            <div class="n-calories">
+              <div class="n-calories-icon">🔥</div>
+              <div class="n-calories-number" id="nCalories">—</div>
+              <div class="n-calories-unit">Calories (per 100g)</div>
             </div>
-            <div class="nutrition-grid">
-              <div class="nutrition-item">
-                <span class="nutrition-value" id="nutritionProtein">—</span>
-                <span class="nutrition-unit">g Protein</span>
+
+            <!-- Macros -->
+            <div class="n-macros">
+              <div class="n-macro">
+                <span class="n-macro-bar n-bar-carbs" id="barCarbs"></span>
+                <span class="n-macro-val" id="nCarbs">—</span>
+                <span class="n-macro-unit">Carbs</span>
               </div>
-              <div class="nutrition-item">
-                <span class="nutrition-value" id="nutritionFat">—</span>
-                <span class="nutrition-unit">g Fat</span>
+              <div class="n-macro">
+                <span class="n-macro-bar n-bar-protein" id="barProtein"></span>
+                <span class="n-macro-val" id="nProtein">—</span>
+                <span class="n-macro-unit">Protein</span>
               </div>
-              <div class="nutrition-item">
-                <span class="nutrition-value" id="nutritionCarbs">—</span>
-                <span class="nutrition-unit">g Carbs</span>
+              <div class="n-macro">
+                <span class="n-macro-bar n-bar-fat" id="barFat"></span>
+                <span class="n-macro-val" id="nFat">—</span>
+                <span class="n-macro-unit">Fat</span>
+              </div>
+            </div>
+
+            <!-- Health Score -->
+            <div class="n-health">
+              <div class="n-health-top">
+                <span class="n-health-icon">❤️</span>
+                <span class="n-health-label">Health Score</span>
+                <span class="n-health-score" id="nHealthScore">—</span>
+              </div>
+              <div class="n-health-track">
+                <div class="n-health-fill" id="nHealthFill"></div>
+              </div>
+              <div class="n-health-ticks">
+                <span>0</span>
+                <span>5</span>
+                <span>10</span>
               </div>
             </div>
           </div>

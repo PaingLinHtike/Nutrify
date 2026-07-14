@@ -40,15 +40,68 @@ IMG_SIZE = 380  # model input size
 # ── Load nutrition data ─────────────────────────────────────────────────
 NUTRITION_CSV = Path("data_exploration/target_ten_whole_food_nutrition_info.csv")
 NUTRITION_DATA: dict[str, dict] = {}
+
+
+def calculate_health_score(protein: float, fat: float, carbohydrate: float, calories: float) -> float:
+    """Health Score (0–10) based on nutritional rules."""
+    score = 5.0
+
+    # 1. Protein (max +2)
+    if protein >= 25:
+        score += 2
+    elif protein >= 15:
+        score += 1
+    elif protein >= 5:
+        score += 0.5
+
+    # 2. Fat (max +2)
+    if fat <= 5:
+        score += 2
+    elif fat <= 15:
+        score += 1
+    elif fat > 30:
+        score -= 2
+
+    # 3. Carbohydrate (max +1)
+    if carbohydrate <= 50:
+        score += 1
+    elif carbohydrate > 70:
+        score -= 1
+
+    # 4. Calories (max +1)
+    if calories <= 200:
+        score += 1
+    elif calories > 400:
+        score -= 1
+
+    return round(max(0, min(score, 10)), 1)
+
+
 if NUTRITION_CSV.exists():
     with NUTRITION_CSV.open(newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            food_name = row["food_name"].strip().lower()
+            food_name = row.get("food_name")
+            if not food_name:
+                continue
+            food_name = food_name.strip().lower()
+            protein = float(row["protein"])
+            fat = float(row["fat"])
+            carbohydrate = float(row["carbohydrate"])
+            # Use "Energy (Atwater Specific Factors)" as calories if available
+            calories_raw = row.get("Energy (Atwater Specific Factors)", "").strip()
+            if calories_raw:
+                calories = round(float(calories_raw))
+            else:
+                # Fallback: calculate from macros
+                calories = round((protein * 4) + (carbohydrate * 4) + (fat * 9))
+            health_score = calculate_health_score(protein, fat, carbohydrate, calories)
             NUTRITION_DATA[food_name] = {
-                "protein": float(row["protein"]),
-                "fat": float(row["fat"]),
-                "carbohydrate": float(row["carbohydrate"]),
+                "protein": protein,
+                "fat": fat,
+                "carbohydrate": carbohydrate,
+                "calories": calories,
+                "health_score": health_score,
             }
     print(f"✅ Loaded nutrition data for {len(NUTRITION_DATA)} foods")
 else:
