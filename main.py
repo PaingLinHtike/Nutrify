@@ -1,8 +1,8 @@
 # main.py
+import csv
 import io
 import os
 import tempfile
-import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -36,6 +36,23 @@ CLASS_NAMES = [
     "strawberries",
 ]
 IMG_SIZE = 380  # model input size
+
+# ── Load nutrition data ─────────────────────────────────────────────────
+NUTRITION_CSV = Path("data_exploration/target_ten_whole_food_nutrition_info.csv")
+NUTRITION_DATA: dict[str, dict] = {}
+if NUTRITION_CSV.exists():
+    with NUTRITION_CSV.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            food_name = row["food_name"].strip().lower()
+            NUTRITION_DATA[food_name] = {
+                "protein": float(row["protein"]),
+                "fat": float(row["fat"]),
+                "carbohydrate": float(row["carbohydrate"]),
+            }
+    print(f"✅ Loaded nutrition data for {len(NUTRITION_DATA)} foods")
+else:
+    print(f"⚠️  Nutrition CSV not found at {NUTRITION_CSV}")
 
 
 # ── Serve the frontend ──────────────────────────────────────────────────
@@ -94,6 +111,7 @@ async def predict_food(file: UploadFile = File(...)):
         "prediction": predicted_food,
         "confidence": confidence,
         "top_predictions": top_predictions,
+        "nutrition": NUTRITION_DATA.get(predicted_food),
         "image_width": width,
         "image_height": height,
     }
