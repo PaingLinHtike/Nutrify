@@ -581,7 +581,7 @@ metadataForm.addEventListener("submit", async (e) => {
     }
 
     const result = await response.json();
-    showSuccess(result);
+    showSuccess();
   } catch (err) {
     showError(err.message);
     btnSave.disabled = false;
@@ -590,13 +590,11 @@ metadataForm.addEventListener("submit", async (e) => {
 });
 
 // ── Show success state ──────────────────────────────────────────────────
-function showSuccess(result) {
+function showSuccess() {
   metaForm.classList.add("hidden");
   resultCard.classList.add("hidden");
+  nutritionCard.classList.add("hidden");
   successState.classList.remove("hidden");
-  successImageId.textContent = result.image_id;
-  successLabel.textContent = capitalize(result.label);
-  successTime.textContent = nowISO();
   successState.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 

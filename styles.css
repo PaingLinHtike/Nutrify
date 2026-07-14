@@ -1013,16 +1013,76 @@ footer {
 }
 
 /* ── Success State ───────────────────────── */
+/* ── Success State ───────────────────────── */
 .success-state {
   text-align: center;
   padding: 50px 30px;
   animation: fadeInUp 0.6s ease;
 }
 
-.success-icon {
-  font-size: 4rem;
-  margin-bottom: 16px;
-  animation: popIn 0.5s ease;
+.success-animation {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.success-ring {
+  width: 100px;
+  height: 100px;
+}
+
+.success-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.success-circle-bg {
+  fill: none;
+  stroke: #e5e7eb;
+  stroke-width: 4;
+}
+
+.success-circle-fill {
+  fill: none;
+  stroke: #22c55e;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 213.6;
+  stroke-dashoffset: 213.6;
+  animation: drawRing 0.8s ease forwards;
+}
+
+@keyframes drawRing {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.success-check {
+  fill: none;
+  stroke: #22c55e;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+  animation: drawCheck 0.4s ease 0.6s forwards;
+  transform: rotate(90deg);
+  transform-origin: 40px 40px;
+}
+
+@keyframes drawCheck {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.success-state h2 {
+  font-size: 1.8rem;
+  color: #16a34a;
+  margin-bottom: 12px;
+  animation: popIn 0.5s ease 0.3s both;
 }
 
 @keyframes popIn {
@@ -1031,7 +1091,7 @@ footer {
     opacity: 0;
   }
   60% {
-    transform: scale(1.2);
+    transform: scale(1.15);
   }
   100% {
     transform: scale(1);
@@ -1039,42 +1099,24 @@ footer {
   }
 }
 
-.success-state h2 {
-  font-size: 1.8rem;
-  color: #16a34a;
-  margin-bottom: 24px;
-}
-
-.success-details {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 14px;
-  padding: 20px 24px;
-  max-width: 420px;
-  margin: 0 auto 28px;
-  text-align: left;
-}
-
-.success-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-}
-
-.success-row + .success-row {
-  border-top: 1px solid #dcfce7;
-}
-
-.success-label {
+.success-message {
   color: #6b7280;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  max-width: 400px;
+  margin: 0 auto 32px;
+  line-height: 1.6;
+  animation: fadeInUp 0.5s ease 0.5s both;
 }
 
-.success-value {
-  font-weight: 600;
-  color: #1e293b;
-  font-size: 0.9rem;
-  word-break: break-all;
+.btn-new {
+  background: #1e293b;
+  color: white;
+}
+
+.btn-new:hover {
+  background: #0f172a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(30, 41, 59, 0.3);
 }
 
 .btn-new {

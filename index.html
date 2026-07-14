@@ -238,22 +238,20 @@
 
         <!-- ═══ Success State ═══ -->
         <div class="success-state hidden" id="successState">
-          <div class="success-icon">✅</div>
-          <h2>Saved Successfully!</h2>
-          <div class="success-details">
-            <div class="success-row">
-              <span class="success-label">Image ID</span>
-              <span class="success-value" id="successImageId">—</span>
-            </div>
-            <div class="success-row">
-              <span class="success-label">Food Label</span>
-              <span class="success-value" id="successLabel">—</span>
-            </div>
-            <div class="success-row">
-              <span class="success-label">Time</span>
-              <span class="success-value" id="successTime">—</span>
+          <div class="success-animation">
+            <div class="success-ring">
+              <svg class="success-svg" viewBox="0 0 80 80">
+                <circle class="success-circle-bg" cx="40" cy="40" r="34" />
+                <circle class="success-circle-fill" cx="40" cy="40" r="34" />
+                <polyline class="success-check" points="24,42 36,54 56,30" />
+              </svg>
             </div>
           </div>
+          <h2>Uploaded Successfully! 🎉</h2>
+          <p class="success-message">
+            Your image and nutrition data have been saved to the database. Thank
+            you for contributing to VitaVision!
+          </p>
           <button class="btn btn-new" id="btnNewUpload">
             🔄 Upload Another
           </button>
