@@ -28,6 +28,10 @@ const foodSelectedTag = document.getElementById("foodSelectedTag");
 const foodSelectedLabel = document.getElementById("foodSelectedLabel");
 const foodTagRemove = document.getElementById("foodTagRemove");
 const btnSubmitCorrection = document.getElementById("btnSubmitCorrection");
+const nutritionCard = document.getElementById("nutritionCard");
+const nutritionProtein = document.getElementById("nutritionProtein");
+const nutritionFat = document.getElementById("nutritionFat");
+const nutritionCarbs = document.getElementById("nutritionCarbs");
 const metaForm = document.getElementById("metaForm");
 const metadataForm = document.getElementById("metadataForm");
 const finalLabel = document.getElementById("finalLabel");
@@ -144,6 +148,7 @@ function resetUI() {
   spinnerContainer.classList.add("hidden");
   resultCard.classList.add("hidden");
   correctionForm.classList.add("hidden");
+  nutritionCard.classList.add("hidden");
   metaForm.classList.add("hidden");
   successState.classList.add("hidden");
   uploadZone.classList.remove("has-image");
@@ -304,10 +309,38 @@ function showResults(data) {
   resultCard.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
+// ── Nutrition lookup map (client-side copy) ────────────────────────────
+const NUTRITION_MAP = {
+  apple: { protein: 0.2, fat: 0.2, carbs: 14.8 },
+  banana: { protein: 0.7, fat: 0.3, carbs: 23.0 },
+  beef: { protein: 27.3, fat: 11.4, carbs: 0.0 },
+  blueberries: { protein: 0.7, fat: 0.3, carbs: 14.5 },
+  carrots: { protein: 0.8, fat: 0.5, carbs: 7.9 },
+  chicken_wings: { protein: 23.9, fat: 6.0, carbs: 0.0 },
+  egg: { protein: 48.1, fat: 39.8, carbs: 1.9 },
+  honey: { protein: 0.3, fat: 0.0, carbs: 82.4 },
+  mushrooms: { protein: 2.9, fat: 0.4, carbs: 4.1 },
+  strawberries: { protein: 0.6, fat: 0.2, carbs: 7.6 },
+};
+
+function showNutritionCard(foodName) {
+  const key = foodName.toLowerCase().replace(/\s+/g, "_");
+  const nutrition = NUTRITION_MAP[key];
+  if (nutrition) {
+    nutritionProtein.textContent = nutrition.protein.toFixed(1);
+    nutritionFat.textContent = nutrition.fat.toFixed(1);
+    nutritionCarbs.textContent = nutrition.carbs.toFixed(1);
+    nutritionCard.classList.remove("hidden");
+  } else {
+    nutritionCard.classList.add("hidden");
+  }
+}
+
 // ── "Correct" button ────────────────────────────────────────────────────
 btnCorrect.addEventListener("click", () => {
   if (!predictionData) return;
   correctionForm.classList.add("hidden");
+  showNutritionCard(predictionData.prediction);
   showMetaForm(predictionData.prediction);
 });
 
@@ -460,6 +493,7 @@ btnSubmitCorrection.addEventListener("click", () => {
     return;
   }
   correctionForm.classList.add("hidden");
+  showNutritionCard(corrected);
   showMetaForm(corrected);
 });
 
