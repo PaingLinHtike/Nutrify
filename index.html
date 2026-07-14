@@ -3,65 +3,223 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nutrify | AI Food Recognition</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>VitaVision | AI Food Recognition</title>
+    <link rel="stylesheet" href="static/styles.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
   </head>
 
   <body>
-    <section class="hero">
-      <div class="hero-container">
-        <div class="hero-text">
-          <h1>
-            Discover Your Food
-            <span>With AI</span>
-          </h1>
-
-          <p>
-            Nutrify helps you understand the food you eat. Upload a food image
-            and discover calories, nutrients, and food information instantly.
-          </p>
-
-          <a
-            class="btn"
-            href="https://nutrify-2sqjtxkftz2wwz4a3leqya.streamlit.app/"
+    <!-- ═══ Navigation ═══ -->
+    <nav class="navbar">
+      <div class="nav-container">
+        <a href="/" class="nav-logo">
+          <span class="logo-icon">🍔</span>
+          <span class="logo-text"
+            >Vita<span class="logo-accent">Vision</span></span
           >
-            Upload Food Image
-          </a>
+        </a>
+        <div class="nav-tagline">AI-Powered Food Intelligence</div>
+      </div>
+    </nav>
+
+    <!-- ═══ Main App ═══ -->
+    <main class="app-main">
+      <div class="container">
+        <!-- Header -->
+        <div class="app-header">
+          <h1>Discover Your Food <span>With AI</span></h1>
+          <p>
+            Upload a food photo and let our AI identify it. Confirm or correct
+            the result to help us improve — every submission adds to the world's
+            largest food database!
+          </p>
         </div>
 
-        <div class="hero-image">
-          <img
-            src="https://images.unsplash.com/photo-1498837167922-ddd27525d352"
-            alt="Healthy food"
-          />
+        <!-- ═══ Upload Zone ═══ -->
+        <div class="upload-zone" id="uploadZone">
+          <div class="upload-content" id="uploadContent">
+            <div class="upload-icon">📸</div>
+            <h3>Upload a Food Image</h3>
+            <p class="upload-hint">Click to browse or drag &amp; drop</p>
+            <p class="upload-formats">Supports JPG, JPEG, PNG · Max 200 MB</p>
+            <input type="file" id="fileInput" accept=".jpg,.jpeg,.png" hidden />
+          </div>
+          <div class="upload-preview hidden" id="uploadPreview">
+            <img id="previewImage" alt="Preview" />
+            <button class="btn-remove" id="btnRemove" title="Remove image">
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- ═══ Spinner ═══ -->
+        <div class="spinner-container hidden" id="spinnerContainer">
+          <div class="spinner"></div>
+          <p class="spinner-text">VitaVision AI is analyzing your food...</p>
+        </div>
+
+        <!-- ═══ Result Card ═══ -->
+        <div class="result-card hidden" id="resultCard">
+          <div class="result-header">
+            <span class="result-badge">AI Analysis Complete</span>
+          </div>
+
+          <div class="result-main">
+            <div class="result-icon" id="resultIcon">🍕</div>
+            <div class="result-details">
+              <h2 class="result-food" id="resultFood">—</h2>
+              <div class="confidence-bar-container">
+                <div class="confidence-label">
+                  <span>Confidence</span>
+                  <span id="confidenceText">0%</span>
+                </div>
+                <div class="confidence-track">
+                  <div class="confidence-fill" id="confidenceFill"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top-3 Predictions -->
+          <div class="top-predictions" id="topPredictions">
+            <p class="top-label">Top predictions</p>
+            <div id="topList"></div>
+          </div>
+
+          <!-- Confirmation -->
+          <div class="confirmation">
+            <p class="confirmation-question">Is this correct?</p>
+            <div class="confirmation-buttons">
+              <button class="btn btn-correct" id="btnCorrect">✓ Correct</button>
+              <button class="btn btn-incorrect" id="btnIncorrect">
+                ✗ Incorrect
+              </button>
+            </div>
+          </div>
+
+          <!-- Correction Form (hidden initially) -->
+          <div class="correction-form hidden" id="correctionForm">
+            <label for="correctedLabel"
+              >Select or search the correct food name:</label
+            >
+            <div class="food-search-container">
+              <div class="food-search-input-wrapper">
+                <span class="food-search-icon">🔍</span>
+                <input
+                  type="text"
+                  id="foodSearchInput"
+                  placeholder="Type to search foods..."
+                  autocomplete="off"
+                />
+                <button
+                  type="button"
+                  class="food-search-clear hidden"
+                  id="foodSearchClear"
+                >
+                  ✕
+                </button>
+              </div>
+              <div class="food-dropdown hidden" id="foodDropdown">
+                <div class="food-dropdown-list" id="foodDropdownList"></div>
+              </div>
+              <div class="food-selected-tag hidden" id="foodSelectedTag">
+                <span id="foodSelectedLabel"></span>
+                <button
+                  type="button"
+                  class="food-tag-remove"
+                  id="foodTagRemove"
+                >
+                  ✕
+                </button>
+              </div>
+              <button
+                class="btn btn-submit-correct hidden"
+                id="btnSubmitCorrection"
+              >
+                ✓ Confirm Food
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ Metadata Form ═══ -->
+        <div class="meta-form hidden" id="metaForm">
+          <div class="meta-card">
+            <h3>📋 Almost done! One last step</h3>
+            <p class="meta-subtitle">
+              Add optional info before we save your submission.
+            </p>
+            <form id="metadataForm">
+              <input type="hidden" id="finalLabel" />
+              <input type="hidden" id="imageData" />
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="metaEmail"
+                    >📧 Email <span>(optional)</span></label
+                  >
+                  <input
+                    type="email"
+                    id="metaEmail"
+                    placeholder="you@example.com"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="metaCountry"
+                    >🌍 Country <span>(optional)</span></label
+                  >
+                  <input
+                    type="text"
+                    id="metaCountry"
+                    placeholder="e.g. Myanmar"
+                  />
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-save" id="btnSave">
+                💾 Save to Database
+              </button>
+            </form>
+            <p class="meta-note">
+              Your image will be stored securely on Google Cloud. Metadata is
+              saved to a Google Sheet to help build the food dataset.
+            </p>
+          </div>
+        </div>
+
+        <!-- ═══ Success State ═══ -->
+        <div class="success-state hidden" id="successState">
+          <div class="success-icon">✅</div>
+          <h2>Saved Successfully!</h2>
+          <div class="success-details">
+            <div class="success-row">
+              <span class="success-label">Image ID</span>
+              <span class="success-value" id="successImageId">—</span>
+            </div>
+            <div class="success-row">
+              <span class="success-label">Food Label</span>
+              <span class="success-value" id="successLabel">—</span>
+            </div>
+            <div class="success-row">
+              <span class="success-label">Time</span>
+              <span class="success-value" id="successTime">—</span>
+            </div>
+          </div>
+          <button class="btn btn-new" id="btnNewUpload">
+            🔄 Upload Another
+          </button>
         </div>
       </div>
-    </section>
+    </main>
 
-    <section class="section">
-      <h2>What Nutrify Can Do</h2>
-
-      <div class="cards">
-        <div class="card">
-          <h3>🥗 Food Recognition</h3>
-
-          <p>AI model identifies food from an image.</p>
-        </div>
-
-        <div class="card">
-          <h3>🔥 Nutrition Information</h3>
-
-          <p>Learn calories, nutrients, and food details.</p>
-        </div>
-
-        <div class="card">
-          <h3>🌎 Food Knowledge</h3>
-          <p>Discover food origin, history, and facts.</p>
-        </div>
-      </div>
-    </section>
+    <!-- ═══ Footer ═══ -->
     <footer>
-      <p>© 2026 Nutrify | AI-powered food intelligence</p>
+      <p>© 2026 VitaVision | AI-powered food intelligence</p>
     </footer>
+
+    <script src="static/app.js"></script>
   </body>
 </html>

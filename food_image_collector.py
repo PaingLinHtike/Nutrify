@@ -5,6 +5,7 @@ from PIL import Image
 from save_to_gsheets import append_values_to_gsheet
 from utils import create_unique_filename
 from rich import print, pretty, traceback
+import requests
 
 pretty.install()
 traceback.install()
@@ -55,11 +56,11 @@ with st.form(key="label_submit_form", clear_on_submit=True):
     )
 
     st.info("**Note:** If you click upload image, your image will be stored on \
-           **Nutrify** servers and used to create the largest \
+           **VitaVision** servers and used to create the largest \
             food image database in the world!")
     submit_button = st.form_submit_button(
         "Upload Image",
-        help="Click to upload the image and label to Nutrify server.",
+        help="Click to upload the image and label to VitaVision server.",
     )
 
 if submit_button:
@@ -103,6 +104,33 @@ if submit_button:
 
     st.success("Image uploaded successfully! Thank You🙏")
 
+    # # --- NEW PREDICTION LOGIC ---
+    # with st.spinner("VitaVision AI is analyzing your food..."):
+    #     try:
+    #         # Get the image bytes to send to the API
+    #         uploaded_images.seek(0)
+    #         image_bytes = uploaded_images.read()
+
+    #         # Send POST request to your FastAPI backend
+    #         api_url = "http://localhost:8000/predict"
+    #         files = {"file": ("image.jpg", image_bytes, "image/jpeg")}
+    #         response = requests.post(api_url, files=files)
+
+    #         if response.status_code == 200:
+    #             result = response.json()
+    #             prediction = result["prediction"]
+    #             confidence = result["confidence"]
+
+    #             st.write("### AI Prediction Results:")
+    #             st.info(f"**Predicted Food:** {prediction.capitalize()}")
+    #             st.info(f"**Confidence:** {confidence:.2%}")
+    #         else:
+    #             st.error("Error communicating with the Vision API.")
+
+    #     except Exception as e:
+    #         st.error(f"Failed to get prediction: {str(e)}")
+    # # ----------------------------
+
     # Remove Image after being Uploaded
     if "uploaded_images" in st.session_state:
         del st.session_state["uploaded_images"]
@@ -115,19 +143,19 @@ if submit_button:
 st.write("## FAQ")
 with st.expander("What happens to my image?"):
     st.write("""
-    When you click "upload image", your image gets stored on Nutrify servers\
+    When you click "upload image", your image gets stored on VitaVision servers\
          (a big hard drive on Google Cloud).\n
     Here's a pretty picture which describes it in more detail:
     """)
     st.image("./images/image-uploading-workflow-with-background.png")
     st.write("Later on, images in the database will be used to train a computer \
-            vision model to power Nutrify.")
+            vision model to power VitaVision.")
 with st.expander("Why do you need images of food?"):
     st.write("""
     Machine learning models learn by looking at many different examples \
         of things.\n
     Food included.\n
-    Eventually, Nutrify wants to be an app you can use to *take a photo of \
+    Eventually, VitaVision wants to be an app you can use to *take a photo of \
         food and learn about it*.\n
     To do so, we'll need many different examples of foods to build a \
         computer vision

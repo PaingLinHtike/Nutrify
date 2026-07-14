@@ -1,4 +1,4 @@
-""""
+""" "
 BEFORE RUNNING:
 
 1. If not already done, enable the Google Sheets API
@@ -7,6 +7,7 @@ https://console.developers.google.com/apis/api/sheets
 2. Install the Python client library for Google APIs by running
 `pip install -- upgrade google-api-python-client'
 """
+
 from functools import lru_cache
 from typing import List
 import os
@@ -14,7 +15,7 @@ from googleapiclient import discovery
 from googleapiclient.errors import HttpError
 from google_credentials import load_service_account_credentials
 
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 SHEETS_SECRET_NAMES = (
     "gcp_service_account_sheets",
     "gcp_service_account_drive",
@@ -24,19 +25,19 @@ SHEETS_SECRET_NAMES = (
 # The ID of the spreadsheet to update.
 if os.getenv("TEST_NUTRIFY_ENV_VAR") == "True":
     print("Using TEST Spreadsheet")
-    SPREADSHEET_ID = "1aANaXNATj3jDbSvLVpcCV9FfzYZ0lgDVCUk5U5iSTZc" # Dev Spreadsheet for testing
-else:    
+    SPREADSHEET_ID = "1aANaXNATj3jDbSvLVpcCV9FfzYZ0lgDVCUk5U5iSTZc"  # Dev Spreadsheet for testing
+else:
     print("Using MAIN Spreadsheet")
-    SPREADSHEET_ID = "1iMrR8XG0r38oqTcZChZAo6Er5lZOrla7vs8m-78kfqY" # Main Spreadsheet
+    SPREADSHEET_ID = "1iMrR8XG0r38oqTcZChZAo6Er5lZOrla7vs8m-78kfqY"  # Main Spreadsheet
 
 # Values will be appended after the last row of the table.
-RANGE_ = "Sheet1!A:E"
+RANGE_ = "Sheet1!A:H"
 
 # How the input data shoutd be interpreted.
-VALUE_INPUT_OPTION = "USER_ENTERED" 
+VALUE_INPUT_OPTION = "USER_ENTERED"
 
 # How the input data should be inserted.
-INSERT_DATA_OPTION = "INSERT_ROWS" 
+INSERT_DATA_OPTION = "INSERT_ROWS"
 
 
 @lru_cache
@@ -47,10 +48,7 @@ def _sheets_credentials():
         scopes=SCOPES,
     )
     if credentials is None:
-        raise RuntimeError(
-            "Google Sheets credentials are not configured. Add them to "
-            "Streamlit secrets or keep an ignored local credentials file."
-        )
+        raise RuntimeError("Google Sheets credentials are not configured. Add them to " "Streamlit secrets or keep an ignored local credentials file.")
 
     return credentials
 
@@ -63,43 +61,32 @@ def sheets_service_account_email():
 def _sheets_service():
     credentials = _sheets_credentials()
     return discovery.build(
-        'sheets',
-        'v4',
+        "sheets",
+        "v4",
         credentials=credentials,
         cache_discovery=False,
     )
 
 
-# values_to_add = [["12345", "6/14/2026", "150", "50", "pizza "]]   
-def append_values_to_gsheet(values_to_add : List[List[str]]):
+# values_to_add = [["12345", "6/14/2026", "150", "50", "pizza "]]
+def append_values_to_gsheet(values_to_add: List[List[str]]):
     """Append values to a Google Sheet.
-        Args : values_to_add: A list of lists, where each inner list represents a row of values. Eg: [["12345", "6/14/2026", "150", "50", "pizza "]]
+    Args : values_to_add: A list of lists, where each inner list represents a row of values. Eg: [["12345", "6/14/2026", "150", "50", "pizza "]]
     """
 
     # Create the JSON-like format for adding values to the spreadsheet.
-    value_range_body = {
-        "majorDimension": "ROWS",
-        "values": values_to_add
-    }
+    value_range_body = {"majorDimension": "ROWS", "values": values_to_add}
 
-    request = _sheets_service().spreadsheets().values().append(
-        spreadsheetId=SPREADSHEET_ID,
-        range=RANGE_,
-        valueInputOption=VALUE_INPUT_OPTION,
-        insertDataOption=INSERT_DATA_OPTION,
-        body=value_range_body
+    request = (
+        _sheets_service().spreadsheets().values().append(spreadsheetId=SPREADSHEET_ID, range=RANGE_, valueInputOption=VALUE_INPUT_OPTION, insertDataOption=INSERT_DATA_OPTION, body=value_range_body)
     )
 
     try:
         response = request.execute()
     except HttpError as error:
         if error.resp.status == 403:
-            raise PermissionError(
-                "Google Sheets rejected the service account "
-                f"{sheets_service_account_email()}. Share the spreadsheet "
-                "with this email as an Editor, then try again."
-            ) from error
+            raise PermissionError("Google Sheets rejected the service account " f"{sheets_service_account_email()}. Share the spreadsheet " "with this email as an Editor, then try again.") from error
         raise
 
     # pprint (response)
-    return(response)
+    return response

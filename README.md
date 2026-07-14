@@ -87,3 +87,11 @@ False
 * `TEST_NUTRIFY_ENV_VAR=True` → Uses **test** resources (e.g., test Google Cloud Storage bucket and test Google Sheet).
 * `TEST_NUTRIFY_ENV_VAR=False` → Uses **development/production** resources.
 * Environment variables set with the `set` command are **temporary** and only apply to the current Command Prompt session. They must be set again when you open a new terminal.
+
+
+Run command
+taskkill /F /IM python.exe
+set TEST_NUTRIFY_ENV_VAR=False
+cd "c:\1.My Files\Paing Lin Htike\School\Semester-8\CS - 601\Nutrify"
+".\food-vision\Scripts\activate"
+uvicorn main:app --host 0.0.0.0 --port 8000
