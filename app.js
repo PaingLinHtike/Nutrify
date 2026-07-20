@@ -163,6 +163,8 @@ function resetUI() {
   previewImage.src = "";
   currentFile = null;
   predictionData = null;
+  // Remove any not-food notifications
+  document.querySelectorAll(".not-food-notification").forEach((el) => el.remove());
   // Reset food search
   selectedFood = null;
   foodSearchInput.value = "";
@@ -242,7 +244,10 @@ async function submitForPrediction(file) {
   resultCard.classList.add("hidden");
   correctionForm.classList.add("hidden");
   metaForm.classList.add("hidden");
+  nutritionCard.classList.add("hidden");
   successState.classList.add("hidden");
+  // Remove any previous not-food notification
+  document.querySelectorAll(".not-food-notification").forEach((el) => el.remove());
   spinnerContainer.classList.remove("hidden");
 
   const formData = new FormData();
@@ -254,8 +259,17 @@ async function submitForPrediction(file) {
       body: formData,
     });
 
+    // ── Handle not-food detection (HTTP 400) ──
     if (!response.ok) {
       const err = await response.json();
+      spinnerContainer.classList.add("hidden");
+
+      // Check if it's a "not food" response
+      if (err.is_food === false) {
+        showNotFoodNotification(err.food_detection_confidence);
+        return;
+      }
+
       throw new Error(err.error || `Server error: ${response.status}`);
     }
 
@@ -265,6 +279,28 @@ async function submitForPrediction(file) {
     showError(err.message);
     spinnerContainer.classList.add("hidden");
   }
+}
+
+// ── Show "Not Food" notification ───────────────────────────────────────
+function showNotFoodNotification(confidence) {
+  // Remove any existing not-food notification
+  document.querySelectorAll(".not-food-notification").forEach((el) => el.remove());
+
+  const notif = document.createElement("div");
+  notif.className = "not-food-notification";
+  notif.innerHTML = `
+    <div class="not-food-icon">🚫</div>
+    <div class="not-food-content">
+      <h3>Not a Food Image</h3>
+      <p>The image you uploaded does not appear to be food.
+         Please upload a clear photo of food to continue.</p>
+      <p class="not-food-confidence">Detection confidence: ${(confidence * 100).toFixed(1)}% (not food)</p>
+    </div>
+  `;
+
+  // Insert after the upload zone
+  uploadZone.parentNode.insertBefore(notif, uploadZone.nextSibling);
+  notif.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 // ── Display prediction results ──────────────────────────────────────────

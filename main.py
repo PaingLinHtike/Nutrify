@@ -1,8 +1,10 @@
 # main.py
 import csv
 import io
+import json
 import os
 import tempfile
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -19,9 +21,53 @@ from utils import create_unique_filename, upload_blob
 
 app = FastAPI(title="VitaVision API")
 
-# ── Load the trained model ──────────────────────────────────────────────
+
+# ── Helper: load models with potential config issues ──────────────────
+def load_keras_model(path: Path):
+    """Load a .keras model, fixing common Keras version incompatibilities."""
+    try:
+        return tf.keras.models.load_model(str(path), compile=False)
+    except Exception:
+        pass  # fall through to the fix-up path
+
+    # Fix: remove quantization_config from the saved config
+    dst = os.path.join(tempfile.gettempdir(), f"_fixed_{path.name}")
+    with zipfile.ZipFile(str(path), "r") as zin:
+        config = json.loads(zin.read("config.json"))
+
+        def _clean(obj):
+            if isinstance(obj, dict):
+                obj.pop("quantization_config", None)
+                for v in obj.values():
+                    _clean(v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    _clean(item)
+
+        _clean(config)
+        with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                if item.filename == "config.json":
+                    zout.writestr(item, json.dumps(config))
+                else:
+                    zout.writestr(item, zin.read(item.filename))
+
+    model = tf.keras.models.load_model(dst, compile=False)
+    os.unlink(dst)
+    return model
+
+
+# ── Load the food-10 classifier model ──────────────────────────────────
 MODEL_PATH = Path("model/food-10-version.keras")
-model = tf.keras.models.load_model(str(MODEL_PATH))
+model = load_keras_model(MODEL_PATH)
+print(f"✅ Loaded food-10 classifier from {MODEL_PATH}")
+
+# ── Load the food / not-food detector model ────────────────────────────
+FOOD_DETECTOR_PATH = Path("model/food_or_not_food_detector.keras")
+food_detector = load_keras_model(FOOD_DETECTOR_PATH)
+FOOD_DETECTOR_SIZE = 224  # input size for the food detector
+FOOD_DETECTOR_THRESHOLD = 0.5  # confidence threshold for "food"
+print(f"✅ Loaded food/not-food detector from {FOOD_DETECTOR_PATH}")
 
 CLASS_NAMES = [
     "apple",
@@ -121,28 +167,48 @@ app.mount("/static", StaticFiles(directory="."), name="static")
 # ── Prediction endpoint ─────────────────────────────────────────────────
 @app.post("/predict")
 async def predict_food(file: UploadFile = File(...)):
-    """Receive an image, run the model, and return top-3 predictions."""
+    """Receive an image, detect if it's food, then classify if it is."""
     contents = await file.read()
 
-    # Save uploaded bytes to a temporary file so we can use
-    # tf.keras.preprocessing.image.load_img (which expects a file path)
+    # Save uploaded bytes to a temporary file
     suffix = Path(file.filename or "image.jpg").suffix or ".jpg"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(contents)
         tmp_path = tmp.name
 
     try:
-        # ── Load image using TensorFlow's load_img ──
+        # ── Step 1: Food / Not-Food Detection ──
+        detector_img = tf.keras.preprocessing.image.load_img(
+            tmp_path,
+            target_size=(FOOD_DETECTOR_SIZE, FOOD_DETECTOR_SIZE),
+        )
+        detector_arr = tf.keras.preprocessing.image.img_to_array(detector_img)
+        # Normalize pixel values to [0, 1] — the food detector expects this range
+        detector_arr = detector_arr / 255.0
+        detector_arr = tf.expand_dims(detector_arr, axis=0)
+
+        detector_pred = food_detector.predict(detector_arr, verbose=0)
+        food_score = float(detector_pred[0][0])  # sigmoid output (≈0 = not food, ≈1 = food)
+
+        # If the detector says it's NOT food, return early
+        if food_score < FOOD_DETECTOR_THRESHOLD:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "is_food": False,
+                    "food_detection_confidence": food_score,
+                    "message": "The uploaded image does not appear to be food. Please upload a photo of food.",
+                },
+            )
+
+        # ── Step 2: Food Classification ──
         image = tf.keras.preprocessing.image.load_img(
             tmp_path,
             target_size=(IMG_SIZE, IMG_SIZE),
         )
         input_arr = tf.keras.preprocessing.image.img_to_array(image)
-        # Remove the hard-coded division by 255 — load_img already returns
-        # pixels in [0, 255] range and the model expects raw uint8-like values.
         input_arr = tf.expand_dims(input_arr, axis=0)
 
-        # ── Predict ──
         predictions = model.predict(input_arr, verbose=0)
 
         predicted_index = int(np.argmax(predictions))
@@ -161,6 +227,8 @@ async def predict_food(file: UploadFile = File(...)):
     width, height = img_pil.size
 
     return {
+        "is_food": True,
+        "food_detection_confidence": food_score,
         "prediction": predicted_food,
         "confidence": confidence,
         "top_predictions": top_predictions,

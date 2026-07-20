@@ -1152,6 +1152,46 @@ footer {
   animation: fadeInUp 0.3s ease;
 }
 
+/* ── Not-Food Notification ───────────────── */
+.not-food-notification {
+  max-width: 560px;
+  margin: 24px auto 0;
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  border-radius: 16px;
+  padding: 24px 28px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  animation: fadeInUp 0.35s ease;
+}
+
+.not-food-icon {
+  font-size: 2.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.not-food-content h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #991b1b;
+  margin-bottom: 6px;
+}
+
+.not-food-content p {
+  font-size: 0.9rem;
+  color: #7f1d1d;
+  line-height: 1.5;
+}
+
+.not-food-confidence {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #b91c1c;
+  opacity: 0.8;
+}
+
 /* ── Responsive ──────────────────────────── */
 @media (max-width: 640px) {
   .navbar {
