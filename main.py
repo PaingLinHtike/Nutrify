@@ -157,11 +157,11 @@ else:
 # ── Serve the frontend ──────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
-    return HTMLResponse(content=Path("index.html").read_text(encoding="utf-8"))
+    return HTMLResponse(content=Path("frontend/index.html").read_text(encoding="utf-8"))
 
 
 # ── Static assets (CSS, JS, images) ─────────────────────────────────────
-app.mount("/static", StaticFiles(directory="."), name="static")
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 
 # ── Prediction endpoint ─────────────────────────────────────────────────

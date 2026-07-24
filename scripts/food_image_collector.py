@@ -1,11 +1,15 @@
-from datetime import datetime
-from utils import upload_blob
-import streamlit as st
-from PIL import Image
-from save_to_gsheets import append_values_to_gsheet
-from utils import create_unique_filename
-from rich import print, pretty, traceback
-import requests
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from datetime import datetime  # noqa: E402
+from utils import upload_blob  # noqa: E402
+import streamlit as st  # noqa: E402
+from PIL import Image  # noqa: E402
+from save_to_gsheets import append_values_to_gsheet  # noqa: E402
+from utils import create_unique_filename  # noqa: E402
+from rich import print, pretty, traceback  # noqa: E402
 
 pretty.install()
 traceback.install()

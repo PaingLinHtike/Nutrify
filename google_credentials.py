@@ -17,20 +17,13 @@ REQUIRED_SERVICE_ACCOUNT_FIELDS = (
 
 def _normalise_service_account_info(credential_info, source):
     if not isinstance(credential_info, Mapping):
-        raise RuntimeError(
-            f"{source} must contain a service-account object, not a plain value."
-        )
+        raise RuntimeError(f"{source} must contain a service-account object, not a plain value.")
 
     credential_info = dict(credential_info)
-    missing_fields = [
-        field for field in REQUIRED_SERVICE_ACCOUNT_FIELDS
-        if not credential_info.get(field)
-    ]
+    missing_fields = [field for field in REQUIRED_SERVICE_ACCOUNT_FIELDS if not credential_info.get(field)]
     if missing_fields:
         missing = ", ".join(missing_fields)
-        raise RuntimeError(
-            f"{source} is missing required service-account field(s): {missing}."
-        )
+        raise RuntimeError(f"{source} is missing required service-account field(s): {missing}.")
 
     private_key = credential_info["private_key"]
     if isinstance(private_key, str):
@@ -107,11 +100,7 @@ def load_service_account_credentials(
     env_var="GOOGLE_SERVICE_ACCOUNT_JSON",
 ):
     """Load service-account credentials without committing key files."""
-    credential_info = (
-        _streamlit_secret_info(secret_names)
-        or _streamlit_json_secret_info(env_var)
-        or _env_secret_info(env_var)
-    )
+    credential_info = _streamlit_secret_info(secret_names) or _streamlit_json_secret_info(env_var) or _env_secret_info(env_var)
     if credential_info:
         try:
             return service_account.Credentials.from_service_account_info(
@@ -119,17 +108,15 @@ def load_service_account_credentials(
                 scopes=scopes,
             )
         except (TypeError, ValueError) as error:
-            raise RuntimeError(
-                "Google service-account credentials are present but invalid. "
-                "Check the private_key and client_email values in Streamlit "
-                "Secrets."
-            ) from error
+            raise RuntimeError("Google service-account credentials are present but invalid. " "Check the private_key and client_email values in Streamlit " "Secrets.") from error
 
     if isinstance(local_filenames, (str, os.PathLike)):
         local_filenames = (local_filenames,)
 
     for local_filename in local_filenames:
         local_path = Path(__file__).with_name(local_filename)
+        if not local_path.exists():
+            local_path = Path(__file__).parent / "config" / local_filename
         if local_path.exists():
             try:
                 return service_account.Credentials.from_service_account_file(
@@ -137,8 +124,6 @@ def load_service_account_credentials(
                     scopes=scopes,
                 )
             except (OSError, TypeError, ValueError) as error:
-                raise RuntimeError(
-                    f"Could not load local service-account file {local_filename}."
-                ) from error
+                raise RuntimeError(f"Could not load local service-account file {local_filename}.") from error
 
     return None
