@@ -18,6 +18,7 @@ from PIL import Image
 
 from save_to_gsheets import append_values_to_gsheet
 from utils import create_unique_filename, upload_blob
+from config.database import insert_food_metadata
 
 app = FastAPI(title="VitaVision API")
 
@@ -297,6 +298,24 @@ async def confirm_prediction(
         return JSONResponse(
             status_code=500,
             content={"error": f"Metadata storage failed: {error}"},
+        )
+
+    # 5. Store metadata in PostgreSQL
+    try:
+        insert_food_metadata(
+            image_id=image_id,
+            upload_time=upload_time,
+            height=height,
+            width=width,
+            email=email,
+            country=country,
+            label=label,
+            source=source,
+        )
+    except Exception as error:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Database storage failed: {error}"},
         )
 
     return {
