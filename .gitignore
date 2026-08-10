@@ -182,4 +182,22 @@ food-vision/
 data/10_foods/
 10_whole_foods/
 10_whole_foods.zip
+
+# Downloaded images (too large)
+data/100_foods/
+data_exploration/data/
+
+# Model files (large binaries)
+*.keras
+*.h5
+model/
+
+# Images
+images/
+sample_food_images/
+
+# Checkpoint files
+*_checkpoint.json
+
+# Keep small CSVs but ignore large image datasets
 data/
