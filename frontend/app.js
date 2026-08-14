@@ -8,7 +8,14 @@ const uploadContent = document.getElementById("uploadContent");
 const uploadPreview = document.getElementById("uploadPreview");
 const previewImage = document.getElementById("previewImage");
 const fileInput = document.getElementById("fileInput");
+const cameraInput = document.getElementById("cameraInput");
+const btnCamera = document.getElementById("btnCamera");
+const btnGallery = document.getElementById("btnGallery");
 const btnRemove = document.getElementById("btnRemove");
+const cameraModal = document.getElementById("cameraModal");
+const cameraVideo = document.getElementById("cameraVideo");
+const btnCameraCapture = document.getElementById("btnCameraCapture");
+const btnCameraClose = document.getElementById("btnCameraClose");
 const spinnerContainer = document.getElementById("spinnerContainer");
 const resultCard = document.getElementById("resultCard");
 const resultIcon = document.getElementById("resultIcon");
@@ -54,6 +61,7 @@ const btnNewUpload = document.getElementById("btnNewUpload");
 // ── State ───────────────────────────────────────────────────────────────
 let currentFile = null; // Raw File object from input / drop
 let predictionData = null; // Response from /predict
+let currentSource = "gallery"; // "camera" or "gallery"
 
 // Food emoji map
 const FOOD_EMOJI = {
@@ -85,38 +93,27 @@ const FOOD_EMOJI = {
   default: "🍽️",
 };
 
-// ── Full food list (mirrors main.py CLASS_NAMES + extra suggestions) ────
-const ALL_FOODS = [
-  // Model classes (CLASS_NAMES from backend)
-  { name: "Apple", category: "model" },
-  { name: "Banana", category: "model" },
-  { name: "Beef", category: "model" },
-  { name: "Blueberries", category: "model" },
-  { name: "Carrots", category: "model" },
-  { name: "Chicken Wings", category: "model" },
-  { name: "Egg", category: "model" },
-  { name: "Honey", category: "model" },
-  { name: "Mushrooms", category: "model" },
-  { name: "Strawberries", category: "model" },
-  // Extra common foods
-  { name: "Pizza", category: "extra" },
-  { name: "Pasta", category: "extra" },
-  { name: "Rice", category: "extra" },
-  { name: "Bread", category: "extra" },
-  { name: "Salad", category: "extra" },
-  { name: "Sushi", category: "extra" },
-  { name: "Burger", category: "extra" },
-  { name: "Soup", category: "extra" },
-  { name: "Sandwich", category: "extra" },
-  { name: "Fish", category: "extra" },
-  { name: "Cheese", category: "extra" },
-  { name: "Yogurt", category: "extra" },
-  { name: "Noodles", category: "extra" },
-  { name: "Ice Cream", category: "extra" },
-  { name: "Cake", category: "extra" },
-];
+// ── Food list (loaded from Supabase food_nutrition) ─────────────────────
+let ALL_FOODS = [];
 
-let selectedFood = null; // Currently selected food name
+async function loadFoodList() {
+  const supabase = window.__supabase;
+  if (!supabase) return;
+  const { data, error } = await supabase
+    .from("food_nutrition")
+    .select("food_name")
+    .order("food_name");
+  if (!error && data) {
+    ALL_FOODS = data.map((r) => ({
+      key: r.food_name,
+      name: r.food_name.replace(/_/g, " "),
+      category: "food",
+    }));
+  }
+}
+
+let selectedFood = null; // Currently selected food display name
+let selectedFoodKey = null; // DB key (food_nutrition.food_name)
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 function getFoodEmoji(label) {
@@ -164,9 +161,12 @@ function resetUI() {
   currentFile = null;
   predictionData = null;
   // Remove any not-food notifications
-  document.querySelectorAll(".not-food-notification").forEach((el) => el.remove());
+  document
+    .querySelectorAll(".not-food-notification")
+    .forEach((el) => el.remove());
   // Reset food search
   selectedFood = null;
+  selectedFoodKey = null;
   foodSearchInput.value = "";
   foodDropdown.classList.add("hidden");
   foodSearchClear.classList.add("hidden");
@@ -176,15 +176,109 @@ function resetUI() {
 
 // ── Trigger file input ──────────────────────────────────────────────────
 uploadZone.addEventListener("click", (e) => {
-  // Don't trigger if clicking the remove button
+  // Don't trigger if clicking the remove button or the explicit buttons
   if (e.target.closest(".btn-remove")) return;
+  if (e.target.closest(".upload-buttons")) return;
   fileInput.click();
+});
+
+// ── Gallery button: native label opens the file picker (no JS needed) ──
+// (the <label for="fileInput"> handles clicks by the browser itself)
+
+// ── Camera button: open the phone camera ────────────────────────────────
+let cameraStream = null;
+
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(
+    navigator.userAgent,
+  );
+}
+
+async function openPhoneCamera() {
+  // Phones: open the native camera app directly via the capture input.
+  // This works on plain HTTP (LAN) where getUserMedia is blocked.
+  if (isMobileDevice()) {
+    cameraInput.value = "";
+    cameraInput.click();
+    return;
+  }
+
+  // Desktop: try the in-app webcam first (works on HTTPS / localhost)
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false,
+      });
+      cameraVideo.srcObject = cameraStream;
+      cameraModal.classList.remove("hidden");
+      return;
+    } catch (err) {
+      console.warn("In-app camera unavailable, using file picker:", err);
+    }
+  }
+  // Final fallback: file picker (capture hint for mobile browsers)
+  cameraInput.value = "";
+  cameraInput.click();
+}
+
+function closeCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(function (t) {
+      t.stop();
+    });
+    cameraStream = null;
+  }
+  if (cameraVideo) cameraVideo.srcObject = null;
+  cameraModal.classList.add("hidden");
+}
+
+btnCamera.addEventListener("click", (e) => {
+  e.stopPropagation();
+  // Mobile: let the native label activation open the camera app directly
+  // (capture="environment") — works over plain HTTP, no JS required.
+  // Desktop: show the in-app webcam modal instead of the file picker.
+  if (!isMobileDevice()) {
+    e.preventDefault();
+    openPhoneCamera();
+  }
+  // On mobile, the native camera app opens via the label's capture attribute
+  // The file will be handled by cameraInput's change event
+});
+
+btnCameraClose.addEventListener("click", closeCamera);
+
+btnCameraCapture.addEventListener("click", function () {
+  if (!cameraVideo || !cameraVideo.videoWidth) return;
+  var canvas = document.createElement("canvas");
+  canvas.width = cameraVideo.videoWidth;
+  canvas.height = cameraVideo.videoHeight;
+  canvas.getContext("2d").drawImage(cameraVideo, 0, 0);
+  canvas.toBlob(
+    function (blob) {
+      var file = new File([blob], "camera-photo.jpg", {
+        type: "image/jpeg",
+      });
+      closeCamera();
+      handleFile(file);
+    },
+    "image/jpeg",
+    0.92,
+  );
 });
 
 // ── File selection via input ────────────────────────────────────────────
 fileInput.addEventListener("change", () => {
   if (fileInput.files.length > 0) {
     handleFile(fileInput.files[0]);
+    fileInput.value = "";
+  }
+});
+
+cameraInput.addEventListener("change", () => {
+  if (cameraInput.files.length > 0) {
+    handleFile(cameraInput.files[0], "camera");
+    cameraInput.value = "";
   }
 });
 
@@ -214,7 +308,7 @@ btnRemove.addEventListener("click", (e) => {
 });
 
 // ── Handle a selected/dropped file ──────────────────────────────────────
-function handleFile(file) {
+function handleFile(file, source = "gallery") {
   // Validate
   const validTypes = ["image/jpeg", "image/png", "image/jpg"];
   if (!validTypes.includes(file.type)) {
@@ -223,6 +317,7 @@ function handleFile(file) {
   }
 
   currentFile = file;
+  currentSource = source; // "camera" or "gallery"
 
   // Show preview
   const reader = new FileReader();
@@ -238,7 +333,7 @@ function handleFile(file) {
   reader.readAsDataURL(file);
 }
 
-// ── Submit image to /predict ────────────────────────────────────────────
+// ── Submit image to /predict (gallery) or /predict-yolo (camera) ────────
 async function submitForPrediction(file) {
   // Hide previous results, show spinner
   resultCard.classList.add("hidden");
@@ -247,14 +342,21 @@ async function submitForPrediction(file) {
   nutritionCard.classList.add("hidden");
   successState.classList.add("hidden");
   // Remove any previous not-food notification
-  document.querySelectorAll(".not-food-notification").forEach((el) => el.remove());
+  document
+    .querySelectorAll(".not-food-notification")
+    .forEach((el) => el.remove());
   spinnerContainer.classList.remove("hidden");
+  var scanOverlay = document.getElementById("scanOverlay");
+  if (scanOverlay) scanOverlay.classList.remove("hidden");
 
   const formData = new FormData();
   formData.append("file", file);
 
+  // Use different endpoints based on source
+  const endpoint = currentSource === "camera" ? "/predict-yolo" : "/predict";
+
   try {
-    const response = await fetch("/predict", {
+    const response = await fetch(endpoint, {
       method: "POST",
       body: formData,
     });
@@ -263,6 +365,7 @@ async function submitForPrediction(file) {
     if (!response.ok) {
       const err = await response.json();
       spinnerContainer.classList.add("hidden");
+      if (scanOverlay) scanOverlay.classList.add("hidden");
 
       // Check if it's a "not food" response
       if (err.is_food === false) {
@@ -274,17 +377,21 @@ async function submitForPrediction(file) {
     }
 
     predictionData = await response.json();
+    if (scanOverlay) scanOverlay.classList.add("hidden");
     showResults(predictionData);
   } catch (err) {
     showError(err.message);
     spinnerContainer.classList.add("hidden");
+    if (scanOverlay) scanOverlay.classList.add("hidden");
   }
 }
 
 // ── Show "Not Food" notification ───────────────────────────────────────
 function showNotFoodNotification(confidence) {
   // Remove any existing not-food notification
-  document.querySelectorAll(".not-food-notification").forEach((el) => el.remove());
+  document
+    .querySelectorAll(".not-food-notification")
+    .forEach((el) => el.remove());
 
   const notif = document.createElement("div");
   notif.className = "not-food-notification";
@@ -351,70 +458,81 @@ function showResults(data) {
   resultCard.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-// ── Nutrition lookup map (client-side copy) ────────────────────────────
-const NUTRITION_MAP = {
-  apple: { protein: 0.2, fat: 0.2, carbs: 14.8, calories: 56, healthScore: 9 },
-  banana: { protein: 0.7, fat: 0.3, carbs: 23.0, calories: 88, healthScore: 9 },
-  beef: { protein: 27.3, fat: 11.4, carbs: 0.0, calories: 219, healthScore: 9 },
-  chicken_wings: {
-    protein: 23.9,
-    fat: 6.0,
-    carbs: 0.0,
-    calories: 156,
-    healthScore: 9,
-  },
-  carrots: { protein: 0.8, fat: 0.5, carbs: 7.9, calories: 37, healthScore: 9 },
-  egg: { protein: 48.1, fat: 39.8, carbs: 1.9, calories: 576, healthScore: 5 },
-  mushrooms: {
-    protein: 2.9,
-    fat: 0.4,
-    carbs: 4.1,
-    calories: 25,
-    healthScore: 9,
-  },
-  strawberries: {
-    protein: 0.6,
-    fat: 0.2,
-    carbs: 7.6,
-    calories: 31,
-    healthScore: 9,
-  },
-};
+// ── Health score (mirrors main.py calculate_health_score) ──────────────
+function calculateHealthScore(protein, fat, carbs, calories) {
+  let score = 5.0;
+  if (protein >= 25) score += 2;
+  else if (protein >= 15) score += 1;
+  else if (protein >= 5) score += 0.5;
+  if (fat <= 5) score += 2;
+  else if (fat <= 15) score += 1;
+  else if (fat > 30) score -= 2;
+  if (carbs <= 50) score += 1;
+  else if (carbs > 70) score -= 1;
+  if (calories <= 200) score += 1;
+  else if (calories > 400) score -= 1;
+  return Math.round(Math.max(0, Math.min(score, 10)) * 10) / 10;
+}
 
-function showNutritionCard(foodName) {
-  const key = foodName.toLowerCase().replace(/\s+/g, "_");
-  const n = NUTRITION_MAP[key];
-  if (n) {
-    // Calories
-    nCalories.textContent = n.calories;
-    // Macros
-    nProtein.textContent = n.protein.toFixed(1) + "g";
-    nFat.textContent = n.fat.toFixed(1) + "g";
-    nCarbs.textContent = n.carbs.toFixed(1) + "g";
-    // Macro bar widths (relative to max 50g protein, 50g fat, 100g carbs)
-    const pct = (v, max) => Math.min((v / max) * 100, 100);
-    barProtein.style.width = pct(n.protein, 50) + "%";
-    barFat.style.width = pct(n.fat, 50) + "%";
-    barCarbs.style.width = pct(n.carbs, 100) + "%";
-    // Health Score
-    const score = n.healthScore;
-    nHealthScore.textContent = score + "/10";
-    nHealthFill.style.width = (score / 10) * 100 + "%";
-    // Color by score
-    if (score >= 8) {
-      nHealthFill.style.background = "linear-gradient(90deg, #22c55e, #16a34a)";
-      nHealthScore.style.color = "#16a34a";
-    } else if (score >= 5) {
-      nHealthFill.style.background = "linear-gradient(90deg, #fbbf24, #f59e0b)";
-      nHealthScore.style.color = "#d97706";
-    } else {
-      nHealthFill.style.background = "linear-gradient(90deg, #f87171, #ef4444)";
-      nHealthScore.style.color = "#dc2626";
-    }
-    nutritionCard.classList.remove("hidden");
-  } else {
+// ── Nutrition lookup (reads Supabase food_nutrition) ───────────────────
+async function showNutritionCard(foodKey) {
+  if (!nutritionCard || !nCalories) return;
+  const supabase = window.__supabase;
+  if (!supabase) {
     nutritionCard.classList.add("hidden");
+    return;
   }
+
+  const normalized = String(foodKey || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "_");
+
+  const { data, error } = await supabase
+    .from("food_nutrition")
+    .select(
+      "calories_per_100g, protein_g_per_100g, fat_g_per_100g, carbs_g_per_100g",
+    )
+    .eq("food_name", normalized)
+    .maybeSingle();
+
+  if (error || !data) {
+    nutritionCard.classList.add("hidden");
+    return;
+  }
+
+  const calories = parseFloat(data.calories_per_100g) || 0;
+  const protein = parseFloat(data.protein_g_per_100g) || 0;
+  const fat = parseFloat(data.fat_g_per_100g) || 0;
+  const carbs = parseFloat(data.carbs_g_per_100g) || 0;
+  const score = calculateHealthScore(protein, fat, carbs, calories);
+
+  // Calories
+  nCalories.textContent = Math.round(calories);
+  // Macros
+  nProtein.textContent = protein.toFixed(1) + "g";
+  nFat.textContent = fat.toFixed(1) + "g";
+  nCarbs.textContent = carbs.toFixed(1) + "g";
+  // Macro bar widths (relative to max 50g protein, 50g fat, 100g carbs)
+  const pct = (v, max) => Math.min((v / max) * 100, 100);
+  barProtein.style.width = pct(protein, 50) + "%";
+  barFat.style.width = pct(fat, 50) + "%";
+  barCarbs.style.width = pct(carbs, 100) + "%";
+  // Health Score
+  nHealthScore.textContent = score + "/10";
+  nHealthFill.style.width = (score / 10) * 100 + "%";
+  // Color by score
+  if (score >= 8) {
+    nHealthFill.style.background = "linear-gradient(90deg, #22c55e, #16a34a)";
+    nHealthScore.style.color = "#16a34a";
+  } else if (score >= 5) {
+    nHealthFill.style.background = "linear-gradient(90deg, #fbbf24, #f59e0b)";
+    nHealthScore.style.color = "#d97706";
+  } else {
+    nHealthFill.style.background = "linear-gradient(90deg, #f87171, #ef4444)";
+    nHealthScore.style.color = "#dc2626";
+  }
+  nutritionCard.classList.remove("hidden");
 }
 
 // ── "Correct" button ────────────────────────────────────────────────────
@@ -422,13 +540,17 @@ btnCorrect.addEventListener("click", () => {
   if (!predictionData) return;
   correctionForm.classList.add("hidden");
   showNutritionCard(predictionData.prediction);
-  showMetaForm(predictionData.prediction);
+  // Only show legacy metaForm if NOT authenticated
+  if (!window.__supabase) {
+    showMetaForm(predictionData.prediction);
+  }
 });
 
 // ── "Incorrect" button ──────────────────────────────────────────────────
 btnIncorrect.addEventListener("click", () => {
   correctionForm.classList.remove("hidden");
   selectedFood = null;
+  selectedFoodKey = null;
   foodSearchInput.value = "";
   foodSearchInput.focus();
   foodSelectedTag.classList.add("hidden");
@@ -453,27 +575,7 @@ function renderFoodDropdown(foods) {
     return;
   }
 
-  // Group by category
-  const modelFoods = foods.filter((f) => f.category === "model");
-  const extraFoods = foods.filter((f) => f.category === "extra");
-
-  if (modelFoods.length > 0) {
-    const header = document.createElement("div");
-    header.className = "food-dropdown-category";
-    header.textContent = "🍽️ Model Classes";
-    foodDropdownList.appendChild(header);
-
-    modelFoods.forEach((food) => appendFoodItem(food));
-  }
-
-  if (extraFoods.length > 0) {
-    const header = document.createElement("div");
-    header.className = "food-dropdown-category";
-    header.textContent = "✨ Suggestions";
-    foodDropdownList.appendChild(header);
-
-    extraFoods.forEach((food) => appendFoodItem(food));
-  }
+  foods.forEach((food) => appendFoodItem(food));
 }
 
 function appendFoodItem(food) {
@@ -481,7 +583,7 @@ function appendFoodItem(food) {
   item.className = "food-dropdown-item";
   if (selectedFood === food.name) item.classList.add("selected");
 
-  const emoji = getFoodEmoji(food.name);
+  const emoji = getFoodEmoji(food.key || food.name);
   const checkMark = selectedFood === food.name ? "✓" : "";
 
   item.innerHTML = `
@@ -490,12 +592,13 @@ function appendFoodItem(food) {
     <span class="food-item-check">${checkMark}</span>
   `;
 
-  item.addEventListener("click", () => selectFood(food.name));
+  item.addEventListener("click", () => selectFood(food.name, food.key));
   foodDropdownList.appendChild(item);
 }
 
-function selectFood(name) {
+function selectFood(name, key) {
   selectedFood = name;
+  selectedFoodKey = key || null;
   foodSearchInput.value = name;
   foodDropdown.classList.add("hidden");
   foodSearchClear.classList.remove("hidden");
@@ -533,6 +636,7 @@ foodSearchClear.addEventListener("click", () => {
   foodSearchInput.value = "";
   foodSearchClear.classList.add("hidden");
   selectedFood = null;
+  selectedFoodKey = null;
   renderFoodDropdown(ALL_FOODS);
   foodDropdown.classList.remove("hidden");
   foodSearchInput.focus();
@@ -541,6 +645,7 @@ foodSearchClear.addEventListener("click", () => {
 // Remove selected tag
 foodTagRemove.addEventListener("click", () => {
   selectedFood = null;
+  selectedFoodKey = null;
   foodSelectedTag.classList.add("hidden");
   btnSubmitCorrection.classList.add("hidden");
   foodSearchInput.value = "";
@@ -574,8 +679,11 @@ btnSubmitCorrection.addEventListener("click", () => {
     return;
   }
   correctionForm.classList.add("hidden");
-  showNutritionCard(corrected);
-  showMetaForm(corrected);
+  showNutritionCard(selectedFoodKey || corrected);
+  // Only show legacy metaForm if NOT authenticated
+  if (!window.__supabase) {
+    showMetaForm(corrected);
+  }
 });
 
 // ── Show metadata form ──────────────────────────────────────────────────
@@ -642,3 +750,6 @@ btnNewUpload.addEventListener("click", () => {
   metaCountry.value = "";
   uploadZone.scrollIntoView({ behavior: "smooth", block: "center" });
 });
+
+// ── Load the food list for the correction dropdown ──────────────────────
+loadFoodList();
