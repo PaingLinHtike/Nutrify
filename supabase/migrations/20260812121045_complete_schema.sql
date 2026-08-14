@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS food_images (
     source TEXT DEFAULT 'user_upload',     -- camera, gallery
     uploaded_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_food_images_user ON food_images(user_id, uploaded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_food_images_user ON food_images(user_id, uploaded_at DESC);
 
 -- ============================================================
 -- 3. MEALS (breakfast / lunch / dinner / snack)
@@ -60,8 +60,8 @@ CREATE TABLE IF NOT EXISTS meals (
     logged_at TIMESTAMPTZ DEFAULT NOW(),
     notes TEXT
 );
-CREATE INDEX idx_meals_user_date ON meals(user_id, logged_at DESC);
-CREATE INDEX idx_meals_user_type ON meals(user_id, meal_type, logged_at DESC);
+CREATE INDEX IF NOT EXISTS idx_meals_user_date ON meals(user_id, logged_at DESC);
+CREATE INDEX IF NOT EXISTS idx_meals_user_type ON meals(user_id, meal_type, logged_at DESC);
 
 -- ============================================================
 -- 4. WATER INTAKE
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS water_logs (
     amount_ml INT NOT NULL,                -- e.g., 250, 500
     logged_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_water_user_date ON water_logs(user_id, logged_at DESC);
+CREATE INDEX IF NOT EXISTS idx_water_user_date ON water_logs(user_id, logged_at DESC);
 
 -- ============================================================
 -- 5. DAILY SUMMARIES (1 row per user per day)
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS daily_summaries (
     water_goal_met BOOLEAN DEFAULT FALSE,
     UNIQUE(user_id, date)
 );
-CREATE INDEX idx_daily_user ON daily_summaries(user_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_daily_user ON daily_summaries(user_id, date DESC);
 
 -- ============================================================
 -- 6. USER ALLERGIES (for Allergy Detection feature #5)
@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS user_allergies (
     allergen TEXT NOT NULL,                -- peanuts, milk, eggs, tree_nuts, soy, gluten, seafood, sesame
     UNIQUE(user_id, allergen)
 );
-CREATE INDEX idx_allergies_user ON user_allergies(user_id);
+CREATE INDEX IF NOT EXISTS idx_allergies_user ON user_allergies(user_id);
 
 -- ============================================================
 -- 7. USER DISEASES (for Disease-Specific Advice feature #14)
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS user_diseases (
     disease TEXT NOT NULL,                 -- diabetes, hypertension, kidney_disease, heart_disease
     UNIQUE(user_id, disease)
 );
-CREATE INDEX idx_diseases_user ON user_diseases(user_id);
+CREATE INDEX IF NOT EXISTS idx_diseases_user ON user_diseases(user_id);
 
 -- ============================================================
 -- 8. FOOD NUTRITION REFERENCE (100+ foods lookup table)
@@ -207,35 +207,44 @@ ALTER TABLE daily_summaries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE food_images ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can only see/update their own data
-CREATE POLICY "Users own their profile" ON user_profiles
-    FOR ALL USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users own their profile') THEN
+CREATE POLICY "Users own their profile" ON user_profiles FOR ALL USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+END IF; END $$;
 
-CREATE POLICY "Users own their allergies" ON user_allergies
-    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users own their allergies') THEN
+CREATE POLICY "Users own their allergies" ON user_allergies FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+END IF; END $$;
 
-CREATE POLICY "Users own their diseases" ON user_diseases
-    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users own their diseases') THEN
+CREATE POLICY "Users own their diseases" ON user_diseases FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+END IF; END $$;
 
-CREATE POLICY "Users own their meals" ON meals
-    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users own their meals') THEN
+CREATE POLICY "Users own their meals" ON meals FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+END IF; END $$;
 
-CREATE POLICY "Users own their water logs" ON water_logs
-    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users own their water logs') THEN
+CREATE POLICY "Users own their water logs" ON water_logs FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+END IF; END $$;
 
-CREATE POLICY "Users own their summaries" ON daily_summaries
-    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users own their summaries') THEN
+CREATE POLICY "Users own their summaries" ON daily_summaries FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+END IF; END $$;
 
-CREATE POLICY "Users own their food images" ON food_images
-    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users own their food images') THEN
+CREATE POLICY "Users own their food images" ON food_images FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+END IF; END $$;
 
 -- Public read for reference tables
-CREATE POLICY "Anyone can read nutrition data" ON food_nutrition
-    FOR SELECT USING (true);
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Anyone can read nutrition data') THEN
+CREATE POLICY "Anyone can read nutrition data" ON food_nutrition FOR SELECT USING (true);
+END IF; END $$;
 
-CREATE POLICY "Anyone can read allergen mappings" ON allergen_foods
-    FOR SELECT USING (true);
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Anyone can read allergen mappings') THEN
+CREATE POLICY "Anyone can read allergen mappings" ON allergen_foods FOR SELECT USING (true);
+END IF; END $$;
 -- ============================================================
--- 11. SEED DATA: food_nutrition (95 foods, per-100g values)
+-- SEED DATA: food_nutrition (95 foods, per-100g values)
 -- Generated from target_hundred_whole_food_nutrition_info.csv
 -- ============================================================
 INSERT INTO food_nutrition (food_name, calories_per_100g, protein_g_per_100g, fat_g_per_100g, carbs_g_per_100g) VALUES

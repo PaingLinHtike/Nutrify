@@ -16,6 +16,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
+import onnxruntime as ort
+
 from save_to_gsheets import append_values_to_gsheet
 from utils import create_unique_filename, upload_blob
 from config.database import insert_food_metadata
@@ -69,7 +71,17 @@ food_detector = load_keras_model(FOOD_DETECTOR_PATH)
 FOOD_DETECTOR_SIZE = 224  # input size for the food detector
 FOOD_DETECTOR_THRESHOLD = 0.5  # confidence threshold for "food"
 print(f"✅ Loaded food/not-food detector from {FOOD_DETECTOR_PATH}")
-
+# ── Load YOLO11l ONNX model for camera (real-time) ─────────────────────
+YOLO_ONNX_PATH = Path("model/best.onnx")
+yolo_session = None
+if YOLO_ONNX_PATH.exists():
+    providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    available = ort.get_available_providers()
+    providers = [p for p in providers if p in available]
+    yolo_session = ort.InferenceSession(str(YOLO_ONNX_PATH), providers=providers)
+    print(f"��� Loaded YOLO11l ONNX model from {YOLO_ONNX_PATH} | providers: {providers}")
+else:
+    print(f"������ YOLO ONNX model not found at {YOLO_ONNX_PATH}")
 CLASS_NAMES = [
     "apple",
     "banana",
@@ -85,7 +97,7 @@ CLASS_NAMES = [
 IMG_SIZE = 380  # model input size
 
 # ── Load nutrition data ─────────────────────────────────────────────────
-NUTRITION_CSV = Path("data_exploration/target_ten_whole_food_nutrition_info.csv")
+NUTRITION_CSV = Path("data_exploration/target_hundred_whole_food_nutrition_info.csv")
 NUTRITION_DATA: dict[str, dict] = {}
 
 
@@ -135,8 +147,8 @@ if NUTRITION_CSV.exists():
             protein = float(row["protein"])
             fat = float(row["fat"])
             carbohydrate = float(row["carbohydrate"])
-            # Use "Energy (Atwater Specific Factors)" as calories if available
-            calories_raw = row.get("Energy (Atwater Specific Factors)", "").strip()
+            # Use energy_kcal (hundred-food CSV) as calories if available
+            calories_raw = row.get("energy_kcal", "").strip()
             if calories_raw:
                 calories = round(float(calories_raw))
             else:
@@ -157,8 +169,20 @@ else:
 
 # ── Serve the frontend ──────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
+async def serve_auth_root():
+    """Landing page = authentication (login / sign-up)."""
+    return HTMLResponse(content=Path("frontend/auth.html").read_text(encoding="utf-8"))
+
+
+@app.get("/app", response_class=HTMLResponse)
 async def serve_frontend():
+    """Main app (dashboard) — reached after authentication."""
     return HTMLResponse(content=Path("frontend/index.html").read_text(encoding="utf-8"))
+
+
+@app.get("/auth", response_class=HTMLResponse)
+async def serve_auth():
+    return HTMLResponse(content=Path("frontend/auth.html").read_text(encoding="utf-8"))
 
 
 # ── Static assets (CSS, JS, images) ─────────────────────────────────────
@@ -224,6 +248,91 @@ async def predict_food(file: UploadFile = File(...)):
         os.unlink(tmp_path)
 
     # ── Get original image dimensions from raw bytes ──
+    img_pil = Image.open(io.BytesIO(contents))
+    width, height = img_pil.size
+
+    return {
+        "is_food": True,
+        "food_detection_confidence": food_score,
+        "prediction": predicted_food,
+        "confidence": confidence,
+        "top_predictions": top_predictions,
+        "nutrition": NUTRITION_DATA.get(predicted_food),
+        "image_width": width,
+        "image_height": height,
+    }
+
+
+# ── YOLO11l Camera endpoint (real-time camera) ──────────────────────────
+@app.post("/predict-yolo")
+async def predict_yolo(file: UploadFile = File(...)):
+    """Receive an image from camera, detect if it's food, then classify with YOLO11l."""
+    if yolo_session is None:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "YOLO11l model not available"},
+        )
+
+    contents = await file.read()
+
+    # Save uploaded bytes to a temporary file
+    suffix = Path(file.filename or "image.jpg").suffix or ".jpg"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(contents)
+        tmp_path = tmp.name
+
+    try:
+        # ── Step 1: Food / Not-Food Detection ──
+        detector_img = tf.keras.preprocessing.image.load_img(
+            tmp_path,
+            target_size=(FOOD_DETECTOR_SIZE, FOOD_DETECTOR_SIZE),
+        )
+        detector_arr = tf.keras.preprocessing.image.img_to_array(detector_img)
+        detector_arr = detector_arr / 255.0
+        detector_arr = tf.expand_dims(detector_arr, axis=0)
+
+        detector_pred = food_detector.predict(detector_arr, verbose=0)
+        food_score = float(detector_pred[0][0])
+
+        if food_score < FOOD_DETECTOR_THRESHOLD:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "is_food": False,
+                    "food_detection_confidence": food_score,
+                    "message": "The uploaded image does not appear to be food. Please upload a photo of food.",
+                },
+            )
+
+        # ── Step 2: YOLO11l Classification ──
+        image = tf.keras.preprocessing.image.load_img(
+            tmp_path,
+            target_size=(224, 224),  # YOLO11l input size
+        )
+        input_arr = tf.keras.preprocessing.image.img_to_array(image)
+        input_arr = input_arr / 255.0
+        input_arr = np.expand_dims(input_arr, axis=0).astype(np.float32)
+
+        # Run YOLO11l ONNX inference
+        input_name = yolo_session.get_inputs()[0].name
+        outputs = yolo_session.run(None, {input_name: input_arr})
+        logits = outputs[0][0]  # [10]
+        
+        # Apply softmax
+        exp_logits = np.exp(logits - np.max(logits))
+        probs = exp_logits / np.sum(exp_logits)
+        
+        predicted_index = int(np.argmax(probs))
+        predicted_food = CLASS_NAMES[predicted_index]
+        confidence = float(probs[predicted_index])
+
+        # Top-3 predictions
+        top_indices = np.argsort(probs)[-3:][::-1]
+        top_predictions = [{"label": CLASS_NAMES[int(i)], "confidence": float(probs[i])} for i in top_indices]
+    finally:
+        os.unlink(tmp_path)
+
+    # Get original image dimensions
     img_pil = Image.open(io.BytesIO(contents))
     width, height = img_pil.size
 
