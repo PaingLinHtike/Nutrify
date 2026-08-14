@@ -27,10 +27,7 @@ import numpy as np
 try:
     import onnxruntime as ort
 except ImportError:
-    sys.exit(
-        "onnxruntime is not installed.\n"
-        "Run:  pip install onnxruntime opencv-python numpy"
-    )
+    sys.exit("onnxruntime is not installed.\n" "Run:  pip install onnxruntime opencv-python numpy")
 
 # ── Config ──────────────────────────────────────────────────────────────
 MODEL_PATH = Path(__file__).resolve().parents[1] / "model" / "best.onnx"
@@ -71,15 +68,15 @@ def preprocess(frame_bgr: np.ndarray) -> np.ndarray:
     img = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
     img = cv2.resize(img, (IMGSZ, IMGSZ), interpolation=cv2.INTER_LINEAR)
     img = img.astype(np.float32) / 255.0
-    img = np.transpose(img, (2, 0, 1))       # HWC → CHW
-    return img[np.newaxis, ...]              # add batch dim
+    img = np.transpose(img, (2, 0, 1))  # HWC → CHW
+    return img[np.newaxis, ...]  # add batch dim
 
 
 def predict(session, frame_bgr: np.ndarray):
     """Run inference and return (label, confidence, scores)."""
     tensor = preprocess(frame_bgr)
     input_name = session.get_inputs()[0].name
-    logits = session.run(None, {input_name: tensor})[0][0]   # [10]
+    logits = session.run(None, {input_name: tensor})[0][0]  # [10]
     scores = softmax(logits)
     top_idx = int(np.argmax(scores))
     return CLASS_NAMES[top_idx], float(scores[top_idx]), scores
@@ -94,8 +91,7 @@ def draw_label(frame, label: str, conf: float, fps: float | None = None):
     text = f"{label}  {conf:.2f}"
     if fps is not None:
         text += f"  |  {fps:.1f} FPS"
-    cv2.putText(frame, text, (12, 32), cv2.FONT_HERSHEY_SIMPLEX,
-                0.85, (0, 220, 0), 2, cv2.LINE_AA)
+    cv2.putText(frame, text, (12, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (0, 220, 0), 2, cv2.LINE_AA)
 
 
 # ── Modes ───────────────────────────────────────────────────────────────
@@ -143,8 +139,7 @@ def run_image(session, image_path: Path):
 
 
 def run_samples(session):
-    imgs = sorted(p for p in SAMPLE_DIR.iterdir()
-                  if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
+    imgs = sorted(p for p in SAMPLE_DIR.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
     if not imgs:
         sys.exit(f"No images found in {SAMPLE_DIR}")
     print(f"Testing on {len(imgs)} sample images:\n")
@@ -160,8 +155,7 @@ def run_samples(session):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Nutrify real-time food detection")
     parser.add_argument("image", nargs="?", help="path to a single image")
-    parser.add_argument("--samples", action="store_true",
-                        help="run on sample_food_images/ instead of the webcam")
+    parser.add_argument("--samples", action="store_true", help="run on sample_food_images/ instead of the webcam")
     args = parser.parse_args()
 
     session = load_session(MODEL_PATH)
