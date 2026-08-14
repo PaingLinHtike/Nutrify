@@ -317,11 +317,11 @@ async def predict_yolo(file: UploadFile = File(...)):
         input_name = yolo_session.get_inputs()[0].name
         outputs = yolo_session.run(None, {input_name: input_arr})
         logits = outputs[0][0]  # [10]
-        
+
         # Apply softmax
         exp_logits = np.exp(logits - np.max(logits))
         probs = exp_logits / np.sum(exp_logits)
-        
+
         predicted_index = int(np.argmax(probs))
         predicted_food = CLASS_NAMES[predicted_index]
         confidence = float(probs[predicted_index])
