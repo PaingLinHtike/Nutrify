@@ -348,4 +348,3 @@ ON CONFLICT (food_name) DO UPDATE SET
     protein_g_per_100g = EXCLUDED.protein_g_per_100g,
     fat_g_per_100g = EXCLUDED.fat_g_per_100g,
     carbs_g_per_100g = EXCLUDED.carbs_g_per_100g;
-
