@@ -15,6 +15,7 @@ const cameraModal = document.getElementById("cameraModal");
 const cameraVideo = document.getElementById("cameraVideo");
 const btnCameraCapture = document.getElementById("btnCameraCapture");
 const btnCameraClose = document.getElementById("btnCameraClose");
+const cameraLiveStatus = document.getElementById("cameraLiveStatus");
 const cameraLiveText = document.getElementById("cameraLiveText");
 const cameraDetectionHint = document.getElementById("cameraDetectionHint");
 const spinnerContainer = document.getElementById("spinnerContainer");
@@ -204,8 +205,15 @@ uploadZone.addEventListener("click", (e) => {
 let cameraStream = null;
 let liveDetectionTimer = null;
 let liveDetectionController = null;
+let liveDetectionErrorLogged = false;
 
-function scheduleLiveDetection(delay = 800) {
+function setLiveDetectionState(state, text, hint) {
+  cameraLiveStatus.dataset.state = state;
+  cameraLiveText.textContent = text;
+  cameraDetectionHint.textContent = hint;
+}
+
+function scheduleLiveDetection(delay = 500) {
   clearTimeout(liveDetectionTimer);
   if (cameraStream) {
     liveDetectionTimer = setTimeout(detectLiveFrame, delay);
@@ -233,7 +241,7 @@ async function detectLiveFrame() {
   formData.append("file", blob, "live-frame.jpg");
   const controller = new AbortController();
   liveDetectionController = controller;
-  let continueDetection = true;
+  let nextDetectionDelay = 700;
 
   try {
     const response = await fetch("/predict-yolo", {
@@ -244,26 +252,36 @@ async function detectLiveFrame() {
     const data = await readJsonResponse(response);
 
     if (response.ok && data.is_food) {
-      cameraLiveText.textContent = `${capitalize(data.prediction)} ${formatPct(data.confidence)}`;
-      cameraDetectionHint.textContent = "Food detected - ready to capture";
+      liveDetectionErrorLogged = false;
+      setLiveDetectionState(
+        "food",
+        `${capitalize(data.prediction)} ${formatPct(data.confidence)}`,
+        "Food detected - ready to capture",
+      );
     } else if (response.status === 400 && data.is_food === false) {
-      cameraLiveText.textContent = "Scanning for food...";
-      cameraDetectionHint.textContent = "Center food in frame";
+      liveDetectionErrorLogged = false;
+      setLiveDetectionState("no-food", "No Food", "Point camera at food");
     } else {
       throw new Error(data.error || "Live detection unavailable");
     }
   } catch (err) {
     if (err.name === "AbortError") return;
-    continueDetection = false;
-    console.warn("Live food detection unavailable:", err);
-    cameraLiveText.textContent = "AI scanner unavailable";
-    cameraDetectionHint.textContent = "Capture to analyze image";
+    nextDetectionDelay = 5000;
+    if (!liveDetectionErrorLogged) {
+      console.warn("Live food detection unavailable:", err);
+      liveDetectionErrorLogged = true;
+    }
+    setLiveDetectionState(
+      "error",
+      "AI scanner unavailable",
+      "Retrying live detection...",
+    );
   } finally {
     if (liveDetectionController === controller) {
       liveDetectionController = null;
     }
-    if (!controller.signal.aborted && continueDetection) {
-      scheduleLiveDetection(1200);
+    if (!controller.signal.aborted) {
+      scheduleLiveDetection(nextDetectionDelay);
     }
   }
 }
@@ -285,8 +303,12 @@ async function openLiveCamera() {
     });
     cameraVideo.srcObject = cameraStream;
     cameraModal.classList.remove("hidden");
-    cameraLiveText.textContent = "Scanning for food...";
-    cameraDetectionHint.textContent = "Center food in frame";
+    liveDetectionErrorLogged = false;
+    setLiveDetectionState(
+      "scanning",
+      "Scanning for food...",
+      "Center food in frame",
+    );
     await cameraVideo.play();
     scheduleLiveDetection();
   } catch (err) {

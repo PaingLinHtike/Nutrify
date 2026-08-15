@@ -22,7 +22,7 @@
         }
       })();
     </script>
-    <link rel="stylesheet" href="/static/styles.css?v=20260815h" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260815i" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
@@ -272,11 +272,37 @@
               </div>
             </div>
 
+            <section class="supported-foods" aria-labelledby="supportedFoodsTitle">
+              <div class="supported-foods-heading">
+                <span class="supported-foods-icon">&#10024;</span>
+                <div>
+                  <h3 id="supportedFoodsTitle">Foods Our AI Recognizes</h3>
+                  <p>For the best result, scan or upload one of these 10 foods.</p>
+                </div>
+              </div>
+              <ul class="supported-foods-list">
+                <li>&#127831; Chicken Wings</li>
+                <li>&#127822; Apple</li>
+                <li>&#127820; Banana</li>
+                <li>&#129385; Beef</li>
+                <li>&#129365; Carrots</li>
+                <li>&#129370; Egg</li>
+                <li>&#127827; Strawberries</li>
+                <li>&#129744; Blueberries</li>
+                <li>&#127812; Mushrooms</li>
+                <li>&#127855; Honey</li>
+              </ul>
+            </section>
+
             <!-- ═══ Camera Modal ═══ -->
             <div class="camera-modal hidden" id="cameraModal">
               <div class="camera-modal-box">
                 <div class="camera-frame" aria-hidden="true">
-                  <div class="camera-live-status">
+                  <div
+                    class="camera-live-status"
+                    id="cameraLiveStatus"
+                    data-state="scanning"
+                  >
                     <span class="camera-live-dot"></span>
                     <span id="cameraLiveText">Starting AI scanner...</span>
                   </div>
@@ -1167,7 +1193,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-    <script src="/static/app.js?v=20260815d"></script>
+    <script src="/static/app.js?v=20260815e"></script>
     <script src="/static/tracker.js?v=20260814"></script>
     <script src="/static/nav.js?v=20260814"></script>
     <script src="/static/onboarding.js?v=20260814"></script>
