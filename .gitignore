@@ -196,6 +196,8 @@ model/
 # Images
 images/
 sample_food_images/
+web_app_design/
+mobile_design/
 
 # Checkpoint files
 *_checkpoint.json
