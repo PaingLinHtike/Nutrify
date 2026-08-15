@@ -1,7 +1,7 @@
 """
 Nutrify — Real-time food detection test (VS Code / local machine)
 ===================================================================
-Runs the fine-tuned YOLO11l model (model/best.onnx) on live webcam
+Runs the real-time food recognition model on live webcam
 frames using ONNX Runtime — no PyTorch required.
 
 Usage:
@@ -30,7 +30,7 @@ except ImportError:
     sys.exit("onnxruntime is not installed.\n" "Run:  pip install onnxruntime opencv-python numpy")
 
 # ── Config ──────────────────────────────────────────────────────────────
-MODEL_PATH = Path(__file__).resolve().parents[1] / "model" / "best.onnx"
+MODEL_PATH = Path(__file__).resolve().parents[1] / "model" / "realtime_food_recognition.onnx"
 IMGSZ = 224  # the model was trained/exported at 224x224
 
 # Class order from training (folder names sorted alphabetically in the
@@ -55,7 +55,7 @@ SAMPLE_DIR = Path(__file__).resolve().parents[1] / "sample_food_images"
 # ── Model ───────────────────────────────────────────────────────────────
 def load_session(model_path: Path) -> ort.InferenceSession:
     if not model_path.exists():
-        sys.exit(f"Model not found: {model_path}\nPut best.onnx in model/.")
+        sys.exit(f"Model not found: {model_path}\nExport realtime_food_recognition.pt to ONNX first.")
     providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
     available = ort.get_available_providers()
     providers = [p for p in providers if p in available]
@@ -76,15 +76,9 @@ def predict(session, frame_bgr: np.ndarray):
     """Run inference and return (label, confidence, scores)."""
     tensor = preprocess(frame_bgr)
     input_name = session.get_inputs()[0].name
-    logits = session.run(None, {input_name: tensor})[0][0]  # [10]
-    scores = softmax(logits)
+    scores = session.run(None, {input_name: tensor})[0][0]  # Softmax probabilities [10]
     top_idx = int(np.argmax(scores))
     return CLASS_NAMES[top_idx], float(scores[top_idx]), scores
-
-
-def softmax(x: np.ndarray) -> np.ndarray:
-    e = np.exp(x - np.max(x))
-    return e / e.sum()
 
 
 def draw_label(frame, label: str, conf: float, fps: float | None = None):
