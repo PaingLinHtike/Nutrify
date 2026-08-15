@@ -189,9 +189,9 @@ data/100_foods/
 data_exploration/data/
 
 # Model files (large binaries)
-*.keras
-*.h5
-model/
+# *.keras
+# *.h5
+# model/
 
 # Images
 images/
