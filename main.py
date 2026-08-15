@@ -2,6 +2,7 @@
 import csv
 import io
 import json
+import logging
 import os
 import tempfile
 import zipfile
@@ -23,6 +24,7 @@ from utils import create_unique_filename, upload_blob
 from config.database import insert_food_metadata
 
 app = FastAPI(title="VitaVision API")
+logger = logging.getLogger(__name__)
 
 
 # ── Helper: load models with potential config issues ──────────────────
@@ -311,6 +313,7 @@ async def predict_yolo(file: UploadFile = File(...)):
         )
         input_arr = tf.keras.preprocessing.image.img_to_array(image)
         input_arr = input_arr / 255.0
+        input_arr = np.transpose(input_arr, (2, 0, 1))  # HWC to ONNX NCHW
         input_arr = np.expand_dims(input_arr, axis=0).astype(np.float32)
 
         # Run YOLO11l ONNX inference
@@ -329,6 +332,12 @@ async def predict_yolo(file: UploadFile = File(...)):
         # Top-3 predictions
         top_indices = np.argsort(probs)[-3:][::-1]
         top_predictions = [{"label": CLASS_NAMES[int(i)], "confidence": float(probs[i])} for i in top_indices]
+    except Exception:
+        logger.exception("YOLO camera prediction failed")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Camera prediction failed"},
+        )
     finally:
         os.unlink(tmp_path)
 

@@ -22,7 +22,7 @@
         }
       })();
     </script>
-    <link rel="stylesheet" href="/static/styles.css?v=20260814e" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260814g" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
@@ -247,13 +247,6 @@
                   class="file-input-hidden"
                   accept=".jpg,.jpeg,.png"
                 />
-                <input
-                  type="file"
-                  id="cameraInput"
-                  class="file-input-hidden"
-                  accept="image/*"
-                  capture="environment"
-                />
                 <div class="upload-buttons">
                   <label
                     for="fileInput"
@@ -263,7 +256,7 @@
                     🖼️ Gallery
                   </label>
                   <button type="button" class="btn btn-camera" id="btnCamera">
-                    ��� Camera
+                    &#128247; Camera
                   </button>
                 </div>
               </div>
@@ -282,7 +275,23 @@
             <!-- ═══ Camera Modal ═══ -->
             <div class="camera-modal hidden" id="cameraModal">
               <div class="camera-modal-box">
-                <div class="camera-frame"></div>
+                <div class="camera-frame" aria-hidden="true">
+                  <div class="camera-live-status">
+                    <span class="camera-live-dot"></span>
+                    <span id="cameraLiveText">Starting AI scanner...</span>
+                  </div>
+                  <div class="camera-detection-grid"></div>
+                  <div class="camera-scan-beam"></div>
+                  <div class="camera-target">
+                    <span class="camera-corner corner-top-left"></span>
+                    <span class="camera-corner corner-top-right"></span>
+                    <span class="camera-corner corner-bottom-left"></span>
+                    <span class="camera-corner corner-bottom-right"></span>
+                  </div>
+                  <div class="camera-detection-hint" id="cameraDetectionHint">
+                    Center food in frame
+                  </div>
+                </div>
                 <video id="cameraVideo" autoplay playsinline muted></video>
                 <div class="camera-modal-actions">
                   <button class="btn btn-camera-capture" id="btnCameraCapture">
@@ -1158,7 +1167,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-    <script src="/static/app.js?v=20260814"></script>
+    <script src="/static/app.js?v=20260815d"></script>
     <script src="/static/tracker.js?v=20260814"></script>
     <script src="/static/nav.js?v=20260814"></script>
     <script src="/static/onboarding.js?v=20260814"></script>

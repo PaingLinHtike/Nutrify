@@ -2573,10 +2573,156 @@ footer {
   left: 24px;
   right: 24px;
   height: calc(340px - 48px);
-  border: 2px dashed rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(125, 211, 252, 0.7);
   border-radius: 14px;
+  overflow: hidden;
   pointer-events: none;
   z-index: 2;
+  box-shadow:
+    inset 0 0 32px rgba(37, 99, 235, 0.12),
+    0 0 18px rgba(56, 189, 248, 0.12);
+}
+
+.camera-live-status {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transform: translateX(-50%);
+  padding: 6px 11px;
+  border: 1px solid rgba(134, 239, 172, 0.45);
+  border-radius: 999px;
+  background: rgba(6, 20, 30, 0.72);
+  color: #dcfce7;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  backdrop-filter: blur(5px);
+}
+
+.camera-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+  animation: cameraLivePulse 1.5s ease-out infinite;
+}
+
+.camera-detection-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(125, 211, 252, 0.45) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.45) 1px, transparent 1px);
+  background-size: 25% 25%;
+}
+
+.camera-scan-beam {
+  position: absolute;
+  top: 17%;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 40px;
+  border-bottom: 2px solid #38bdf8;
+  background: linear-gradient(to bottom, transparent, rgba(14, 165, 233, 0.2));
+  filter: drop-shadow(0 3px 7px rgba(56, 189, 248, 0.8));
+  animation: cameraScan 2.8s ease-in-out infinite;
+}
+
+.camera-target {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  width: 48%;
+  height: 42%;
+  transform: translate(-50%, -50%);
+}
+
+.camera-corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  color: #7dd3fc;
+  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.9));
+}
+
+.corner-top-left {
+  top: 0;
+  left: 0;
+  border-top: 3px solid;
+  border-left: 3px solid;
+  border-radius: 5px 0 0;
+}
+
+.corner-top-right {
+  top: 0;
+  right: 0;
+  border-top: 3px solid;
+  border-right: 3px solid;
+  border-radius: 0 5px 0 0;
+}
+
+.corner-bottom-left {
+  bottom: 0;
+  left: 0;
+  border-bottom: 3px solid;
+  border-left: 3px solid;
+  border-radius: 0 0 0 5px;
+}
+
+.corner-bottom-right {
+  right: 0;
+  bottom: 0;
+  border-right: 3px solid;
+  border-bottom: 3px solid;
+  border-radius: 0 0 5px;
+}
+
+.camera-detection-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 4;
+  transform: translateX(-50%);
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(6, 20, 30, 0.68);
+  color: #e0f2fe;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
+
+@keyframes cameraScan {
+  0%,
+  100% {
+    top: 12%;
+    opacity: 0.55;
+  }
+  50% {
+    top: 73%;
+    opacity: 1;
+  }
+}
+
+@keyframes cameraLivePulse {
+  70% {
+    box-shadow: 0 0 0 7px rgba(74, 222, 128, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
 }
 
 .camera-modal-actions {
@@ -2605,7 +2751,7 @@ footer {
   background: #374151;
   color: #ffffff;
   border: none;
-  width: 48px;
+  /* width: 48px; */
   border-radius: 12px;
   font-weight: 700;
   font-size: 1rem;
@@ -3556,6 +3702,7 @@ html[data-theme="dark"] .serving-input {
 html[data-theme="dark"] .profile-form.viewing input,
 html[data-theme="dark"] .profile-form.viewing select {
   color: #e2e8f0;
+  padding-inline: 16px;
 }
 
 html[data-theme="dark"] .profile-form.viewing .form-group label {
