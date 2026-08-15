@@ -73,15 +73,15 @@ food_detector = load_keras_model(FOOD_DETECTOR_PATH)
 FOOD_DETECTOR_SIZE = 224  # input size for the food detector
 FOOD_DETECTOR_THRESHOLD = 0.5  # confidence threshold for "food"
 print(f"✅ Loaded food/not-food detector from {FOOD_DETECTOR_PATH}")
-# ── Load YOLO11l ONNX model for camera (real-time) ─────────────────────
-YOLO_ONNX_PATH = Path("model/best.onnx")
+# ── Load the real-time food recognition model exported from its .pt checkpoint ──
+YOLO_ONNX_PATH = Path("model/realtime_food_recognition.onnx")
 yolo_session = None
 if YOLO_ONNX_PATH.exists():
     providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
     available = ort.get_available_providers()
     providers = [p for p in providers if p in available]
     yolo_session = ort.InferenceSession(str(YOLO_ONNX_PATH), providers=providers)
-    print(f"��� Loaded YOLO11l ONNX model from {YOLO_ONNX_PATH} | providers: {providers}")
+    print(f"��� Loaded real-time food model from {YOLO_ONNX_PATH} | providers: {providers}")
 else:
     print(f"������ YOLO ONNX model not found at {YOLO_ONNX_PATH}")
 CLASS_NAMES = [
@@ -319,11 +319,7 @@ async def predict_yolo(file: UploadFile = File(...)):
         # Run YOLO11l ONNX inference
         input_name = yolo_session.get_inputs()[0].name
         outputs = yolo_session.run(None, {input_name: input_arr})
-        logits = outputs[0][0]  # [10]
-
-        # Apply softmax
-        exp_logits = np.exp(logits - np.max(logits))
-        probs = exp_logits / np.sum(exp_logits)
+        probs = outputs[0][0]  # Exported classifier output is already softmax-normalized
 
         predicted_index = int(np.argmax(probs))
         predicted_food = CLASS_NAMES[predicted_index]
