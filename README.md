@@ -131,10 +131,10 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 cloudflared tunnel --url http://localhost:8000
 
 # Run Sever
-local URL - http://localhost:8000
-mobile URL - https://talented-speed-faq-gene.trycloudflare.com/app#/dashboard
+local URL : http://localhost:8000
+mobile URL : https://talented-speed-faq-gene.trycloudflare.com/app#/dashboard
 ```
-<!-- 
+<!--
 ### 4. Open the App
 
 Visit **[http://localhost:8000](http://localhost:8000)** in your browser. -->
