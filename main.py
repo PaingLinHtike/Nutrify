@@ -80,21 +80,11 @@ REALTIME_MODEL_PATH = Path("model/realtime_food_recognition.onnx")
 realtime_session = None
 if REALTIME_MODEL_SOURCE_PATH.exists() and REALTIME_MODEL_PATH.exists():
     available_providers = ort.get_available_providers()
-    providers = [
-        provider
-        for provider in ("CUDAExecutionProvider", "CPUExecutionProvider")
-        if provider in available_providers
-    ]
+    providers = [provider for provider in ("CUDAExecutionProvider", "CPUExecutionProvider") if provider in available_providers]
     realtime_session = ort.InferenceSession(str(REALTIME_MODEL_PATH), providers=providers)
-    print(
-        f"✅ Loaded real-time recognition model exported from "
-        f"{REALTIME_MODEL_SOURCE_PATH} | providers: {providers}"
-    )
+    print(f"✅ Loaded real-time recognition model exported from " f"{REALTIME_MODEL_SOURCE_PATH} | providers: {providers}")
 else:
-    print(
-        f"⚠️ Real-time model unavailable; expected "
-        f"{REALTIME_MODEL_SOURCE_PATH} and {REALTIME_MODEL_PATH}"
-    )
+    print(f"⚠️ Real-time model unavailable; expected " f"{REALTIME_MODEL_SOURCE_PATH} and {REALTIME_MODEL_PATH}")
 
 CLASS_NAMES = [
     "apple",
