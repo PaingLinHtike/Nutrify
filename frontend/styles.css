@@ -586,6 +586,19 @@ footer {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
+.nutrition-serving-title {
+  margin-bottom: 16px;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.nutrition-serving-title strong {
+  color: #2563eb;
+  font-size: 0.95rem;
+}
+
 /* ── Calories ────────────────────────────── */
 .n-calories {
   text-align: center;
@@ -644,7 +657,7 @@ footer {
   height: 100%;
   border-radius: 50px;
   transition: width 0.8s ease;
-  width: 0%;
+  width: var(--fill-width, 0%);
 }
 
 .n-bar-carbs::after {
@@ -2161,7 +2174,7 @@ body:not(.authenticated) .app-layout {
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   padding: 18px;
-  margin-top: 18px;
+  margin: 18px 0;
 }
 
 .save-meal-title {
@@ -2170,11 +2183,33 @@ body:not(.authenticated) .app-layout {
   margin-bottom: 12px;
 }
 
+.save-meal-help {
+  margin: -6px 0 14px;
+  color: #64748b;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 .save-meal-row {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.meal-log-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.serving-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .meal-type-select {
@@ -2208,6 +2243,7 @@ body:not(.authenticated) .app-layout {
   border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
+  align-self: flex-end;
 }
 
 .btn-save-meal:hover {
@@ -3700,6 +3736,51 @@ html[data-theme="dark"] .supported-foods-list li {
 html[data-theme="dark"] .water-card {
   background: linear-gradient(135deg, #0c3a5c, #16233b);
   border-color: #1e40af;
+}
+
+/* ── Nutrition card internals (dark) ── */
+html[data-theme="dark"] .n-health {
+  background: #0f172a;
+}
+
+html[data-theme="dark"] .n-health-label,
+html[data-theme="dark"] .nutrition-serving-title,
+html[data-theme="dark"] .save-meal-help {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .nutrition-serving-title strong {
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .n-health-track,
+html[data-theme="dark"] .n-macro-bar {
+  background: #334155;
+}
+
+html[data-theme="dark"] .n-macro-val {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .n-calories-number {
+  color: #4ade80;
+}
+
+html[data-theme="dark"] .n-calories-unit,
+html[data-theme="dark"] .n-health-ticks {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .n-calories {
+  border-bottom-color: #334155;
+}
+
+html[data-theme="dark"] .meal-log-field {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .serving-unit {
+  color: #cbd5e1;
 }
 
 /* Headings */

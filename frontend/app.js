@@ -47,6 +47,10 @@ const barFat = document.getElementById("barFat");
 const barCarbs = document.getElementById("barCarbs");
 const nHealthScore = document.getElementById("nHealthScore");
 const nHealthFill = document.getElementById("nHealthFill");
+const saveMeal = document.getElementById("saveMeal");
+const servingSize = document.getElementById("servingSize");
+const saveMealNote = document.getElementById("saveMealNote");
+const nutritionServingWeight = document.getElementById("nutritionServingWeight");
 const metaForm = document.getElementById("metaForm");
 const metadataForm = document.getElementById("metadataForm");
 const finalLabel = document.getElementById("finalLabel");
@@ -64,6 +68,7 @@ const btnNewUpload = document.getElementById("btnNewUpload");
 let currentFile = null; // Raw File object from input / drop
 let predictionData = null; // Response from /predict
 let currentSource = "gallery";
+let currentNutritionPer100g = null;
 
 // Food emoji map
 const FOOD_EMOJI = {
@@ -176,6 +181,10 @@ function resetUI() {
   currentFile = null;
   predictionData = null;
   currentSource = "gallery";
+  currentNutritionPer100g = null;
+  saveMeal.classList.add("hidden");
+  servingSize.value = "100";
+  saveMealNote.textContent = "";
   // Remove any not-food notifications
   document
     .querySelectorAll(".not-food-notification")
@@ -562,54 +571,67 @@ function calculateHealthScore(protein, fat, carbs, calories) {
   return Math.round(Math.max(0, Math.min(score, 10)) * 10) / 10;
 }
 
-// ── Nutrition lookup (reads Supabase food_nutrition) ───────────────────
-async function showNutritionCard(foodKey) {
-  if (!nutritionCard || !nCalories) return;
-  const supabase = window.__supabase;
-  if (!supabase) {
+// ── Nutrition lookup and serving-size calculation ──────────────────────
+function normalizeNutrition(raw) {
+  if (!raw) return null;
+  const numberFrom = (...keys) => {
+    for (const key of keys) {
+      const value = Number.parseFloat(raw[key]);
+      if (Number.isFinite(value)) return value;
+    }
+    return 0;
+  };
+  return {
+    calories: numberFrom("calories", "calories_per_100g"),
+    protein: numberFrom("protein", "protein_g_per_100g"),
+    fat: numberFrom("fat", "fat_g_per_100g"),
+    carbs: numberFrom("carbohydrate", "carbs", "carbs_g_per_100g"),
+    healthScore: numberFrom("health_score"),
+  };
+}
+
+function formatNutrient(value) {
+  return Number(value.toFixed(1)).toString();
+}
+
+function renderNutritionForServing() {
+  if (!currentNutritionPer100g) return;
+  const weight = Number.parseFloat(servingSize.value);
+  if (!Number.isFinite(weight) || weight < 1 || weight > 2000) {
     nutritionCard.classList.add("hidden");
+    saveMealNote.textContent = "Enter a weight between 1 g and 2000 g.";
     return;
   }
 
-  const normalized = String(foodKey || "")
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "_");
+  saveMealNote.textContent = "";
+  const scale = weight / 100;
+  const calories = currentNutritionPer100g.calories * scale;
+  const protein = currentNutritionPer100g.protein * scale;
+  const fat = currentNutritionPer100g.fat * scale;
+  const carbs = currentNutritionPer100g.carbs * scale;
+  const score =
+    currentNutritionPer100g.healthScore ||
+    calculateHealthScore(
+      currentNutritionPer100g.protein,
+      currentNutritionPer100g.fat,
+      currentNutritionPer100g.carbs,
+      currentNutritionPer100g.calories,
+    );
 
-  const { data, error } = await supabase
-    .from("food_nutrition")
-    .select(
-      "calories_per_100g, protein_g_per_100g, fat_g_per_100g, carbs_g_per_100g",
-    )
-    .eq("food_name", normalized)
-    .maybeSingle();
+  nutritionServingWeight.textContent = `${formatNutrient(weight)} g`;
+  nCalories.textContent = formatNutrient(calories);
+  nProtein.textContent = formatNutrient(protein) + "g";
+  nFat.textContent = formatNutrient(fat) + "g";
+  nCarbs.textContent = formatNutrient(carbs) + "g";
 
-  if (error || !data) {
-    nutritionCard.classList.add("hidden");
-    return;
-  }
+  const percentage = (value, maximum) =>
+    Math.min((value / maximum) * 100, 100) + "%";
+  barProtein.style.setProperty("--fill-width", percentage(protein, 50));
+  barFat.style.setProperty("--fill-width", percentage(fat, 50));
+  barCarbs.style.setProperty("--fill-width", percentage(carbs, 100));
 
-  const calories = parseFloat(data.calories_per_100g) || 0;
-  const protein = parseFloat(data.protein_g_per_100g) || 0;
-  const fat = parseFloat(data.fat_g_per_100g) || 0;
-  const carbs = parseFloat(data.carbs_g_per_100g) || 0;
-  const score = calculateHealthScore(protein, fat, carbs, calories);
-
-  // Calories
-  nCalories.textContent = Math.round(calories);
-  // Macros
-  nProtein.textContent = protein.toFixed(1) + "g";
-  nFat.textContent = fat.toFixed(1) + "g";
-  nCarbs.textContent = carbs.toFixed(1) + "g";
-  // Macro bar widths (relative to max 50g protein, 50g fat, 100g carbs)
-  const pct = (v, max) => Math.min((v / max) * 100, 100);
-  barProtein.style.width = pct(protein, 50) + "%";
-  barFat.style.width = pct(fat, 50) + "%";
-  barCarbs.style.width = pct(carbs, 100) + "%";
-  // Health Score
   nHealthScore.textContent = score + "/10";
   nHealthFill.style.width = (score / 10) * 100 + "%";
-  // Color by score
   if (score >= 8) {
     nHealthFill.style.background = "linear-gradient(90deg, #22c55e, #16a34a)";
     nHealthScore.style.color = "#16a34a";
@@ -623,11 +645,47 @@ async function showNutritionCard(foodKey) {
   nutritionCard.classList.remove("hidden");
 }
 
+async function showNutritionCard(foodKey, providedNutrition = null) {
+  if (!nutritionCard || !nCalories) return;
+  saveMeal.classList.remove("hidden");
+  saveMealNote.textContent = "Loading nutrition data...";
+
+  let nutrition = normalizeNutrition(providedNutrition);
+  const supabase = window.__supabase;
+  if (!nutrition && supabase) {
+    const normalized = String(foodKey || "")
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "_");
+    const { data, error } = await supabase
+      .from("food_nutrition")
+      .select(
+        "calories_per_100g, protein_g_per_100g, fat_g_per_100g, carbs_g_per_100g",
+      )
+      .eq("food_name", normalized)
+      .maybeSingle();
+    if (!error) nutrition = normalizeNutrition(data);
+  }
+
+  if (!nutrition) {
+    currentNutritionPer100g = null;
+    nutritionCard.classList.add("hidden");
+    saveMealNote.textContent = "Nutrition data is unavailable for this food.";
+    return;
+  }
+
+  currentNutritionPer100g = nutrition;
+  renderNutritionForServing();
+  saveMeal.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+servingSize.addEventListener("input", renderNutritionForServing);
+
 // ── "Correct" button ────────────────────────────────────────────────────
 btnCorrect.addEventListener("click", () => {
   if (!predictionData) return;
   correctionForm.classList.add("hidden");
-  showNutritionCard(predictionData.prediction);
+  showNutritionCard(predictionData.prediction, predictionData.nutrition);
   // Only show legacy metaForm if NOT authenticated
   if (!window.__supabase) {
     showMetaForm(predictionData.prediction);
@@ -767,6 +825,8 @@ btnSubmitCorrection.addEventListener("click", () => {
     return;
   }
   correctionForm.classList.add("hidden");
+  resultFood.textContent = capitalize(corrected);
+  resultIcon.textContent = getFoodEmoji(selectedFoodKey || corrected);
   showNutritionCard(selectedFoodKey || corrected);
   // Only show legacy metaForm if NOT authenticated
   if (!window.__supabase) {

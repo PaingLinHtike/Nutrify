@@ -22,7 +22,7 @@
         }
       })();
     </script>
-    <link rel="stylesheet" href="/static/styles.css?v=20260816a" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260816b" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
@@ -366,13 +366,54 @@
                 <div id="topList"></div>
               </div>
 
+              <!-- ═══ Save Meal + Serving Size ═══ -->
+              <div class="save-meal hidden" id="saveMeal">
+                <p class="save-meal-title">📝 Save this to your meal log</p>
+                <p class="save-meal-help">
+                  Enter the food weight. Nutrition values below update automatically.
+                </p>
+                <div class="save-meal-row">
+                  <label class="meal-log-field">
+                    <span>Meal</span>
+                    <select id="mealType" class="meal-type-select">
+                      <option value="breakfast">🌅 Breakfast</option>
+                      <option value="lunch">☀️ Lunch</option>
+                      <option value="dinner">🌙 Dinner</option>
+                      <option value="snack">🍿 Snack</option>
+                    </select>
+                  </label>
+                  <label class="meal-log-field">
+                    <span>Food weight</span>
+                    <span class="serving-control">
+                      <input
+                        type="number"
+                        id="servingSize"
+                        class="serving-input"
+                        value="100"
+                        min="1"
+                        max="2000"
+                        inputmode="decimal"
+                      />
+                      <span class="serving-unit">g</span>
+                    </span>
+                  </label>
+                  <button type="button" class="btn btn-save-meal" id="btnSaveMeal">
+                    💾 Save Meal
+                  </button>
+                </div>
+                <p class="save-meal-note" id="saveMealNote"></p>
+              </div>
+
               <!-- ═══ Nutrition Card ═══ -->
               <div class="nutrition-card hidden" id="nutritionCard">
+                <p class="nutrition-serving-title">
+                  Nutrition for <strong id="nutritionServingWeight">100 g</strong>
+                </p>
                 <!-- Calories -->
                 <div class="n-calories">
                   <div class="n-calories-icon">🔥</div>
                   <div class="n-calories-number" id="nCalories">—</div>
-                  <div class="n-calories-unit">Calories (per 100g)</div>
+                  <div class="n-calories-unit">Calories</div>
                 </div>
 
                 <!-- Macros -->
@@ -413,32 +454,6 @@
                     <span>10</span>
                   </div>
                 </div>
-              </div>
-
-              <!-- ═══ Save Meal ═══ -->
-              <div class="save-meal hidden" id="saveMeal">
-                <p class="save-meal-title">📝 Save this to your meal log</p>
-                <div class="save-meal-row">
-                  <select id="mealType" class="meal-type-select">
-                    <option value="breakfast">🌅 Breakfast</option>
-                    <option value="lunch">☀️ Lunch</option>
-                    <option value="dinner">🌙 Dinner</option>
-                    <option value="snack">🍿 Snack</option>
-                  </select>
-                  <input
-                    type="number"
-                    id="servingSize"
-                    class="serving-input"
-                    value="100"
-                    min="1"
-                    max="2000"
-                  />
-                  <span class="serving-unit">g</span>
-                  <button class="btn btn-save-meal" id="btnSaveMeal">
-                    💾 Save Meal
-                  </button>
-                </div>
-                <p class="save-meal-note" id="saveMealNote"></p>
               </div>
 
               <!-- Confirmation -->
@@ -1193,8 +1208,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-    <script src="/static/app.js?v=20260816a"></script>
-    <script src="/static/tracker.js?v=20260814"></script>
+<script src="/static/app.js?v=20260816b"></script>
+    <script src="/static/tracker.js?v=20260816b"></script>
     <script src="/static/nav.js?v=20260814"></script>
     <script src="/static/onboarding.js?v=20260814"></script>
     <script src="/static/history.js?v=20260814"></script>

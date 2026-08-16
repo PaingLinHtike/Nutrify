@@ -47,13 +47,17 @@
       if (!foodEl || !calEl) return;
 
       var foodName = foodEl.textContent.trim();
-      var servingG = parseInt(servingSize.value) || 100;
-      var scale = servingG / 100;
+      var servingG = parseFloat(servingSize.value);
+      if (!Number.isFinite(servingG) || servingG < 1 || servingG > 2000) {
+        saveMealNote.textContent = "Enter a weight between 1 g and 2000 g.";
+        return;
+      }
 
-      var calories = parseFloat(calEl.textContent) * scale || 0;
-      var protein = parseFloat(proEl.textContent) * scale || 0;
-      var fat = parseFloat(fatEl.textContent) * scale || 0;
-      var carbs = parseFloat(carbEl.textContent) * scale || 0;
+      // Nutrition values are already scaled live by app.js for this serving.
+      var calories = parseFloat(calEl.textContent) || 0;
+      var protein = parseFloat(proEl.textContent) || 0;
+      var fat = parseFloat(fatEl.textContent) || 0;
+      var carbs = parseFloat(carbEl.textContent) || 0;
 
       btnSaveMeal.disabled = true;
       btnSaveMeal.textContent = "Saving...";
