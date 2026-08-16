@@ -80,7 +80,7 @@ Nutrify/
 ├── google_credentials.py        # Credential loader
 ├── model/                       # 🧠 Trained models
 │   ├── food-10-version.keras
-│   └── food_or_not_food_detector.keras
+│   └── food_or_not_food_detector_v2.keras
 ├── data/                        # 📦 Raw dataset
 ├── data_exploration/            # 📊 USDA analysis + nutrition CSV
 ├── 10_whole_foods/              # 🏋️ Train/test split
@@ -207,7 +207,7 @@ Store a confirmed prediction to cloud storage and sheets.
 
 | Property  | Value                                   |
 | --------- | --------------------------------------- |
-| File      | `model/food_or_not_food_detector.keras` |
+| File      | `model/food_or_not_food_detector_v2.keras` |
 | Input     | 224 × 224 × 3 RGB                       |
 | Output    | Sigmoid (0 = not food, 1 = food)        |
 | Threshold | 0.5                                     |
