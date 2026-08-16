@@ -76,9 +76,9 @@
       fat += parseFloat(m.fat_g) || 0;
     });
     setText("daySumCal", Math.round(cal) + " kcal");
-    setText("daySumPro", pro.toFixed(1) + " g");
-    setText("daySumCar", car.toFixed(1) + " g");
-    setText("daySumFat", fat.toFixed(1) + " g");
+    setText("daySumPro", Math.round(pro) + " g");
+    setText("daySumCar", Math.round(car) + " g");
+    setText("daySumFat", Math.round(fat) + " g");
     setText("daySumCount", (meals || []).length);
 
     if (!meals || meals.length === 0) {
@@ -87,34 +87,17 @@
       return;
     }
 
-    var icons = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍿" };
+    var imgMap = await window.fetchMealImages(
+      meals.map(function (m) {
+        return m.image_id;
+      }),
+    );
     mealList.innerHTML = meals
       .map(function (m) {
-        var t = new Date(m.logged_at).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        return (
-          '<div class="meal-item">' +
-          '<span class="meal-item-icon">' +
-          (icons[m.meal_type] || "🍽️") +
-          "</span>" +
-          '<span class="meal-item-name">' +
-          m.food_name +
-          "</span>" +
-          '<span class="meal-item-cals">' +
-          parseFloat(m.calories).toFixed(0) +
-          " kcal</span>" +
-          '<span class="meal-item-time">' +
-          t +
-          "</span>" +
-          '<span class="meal-item-type">' +
-          m.meal_type +
-          "</span>" +
-          "</div>"
-        );
+        return window.buildMealItemHTML(m, imgMap[m.image_id]);
       })
       .join("");
+    window.bindMealItemClicks(mealList, meals, imgMap);
   }
 
   async function loadRange(range) {

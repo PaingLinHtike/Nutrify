@@ -53,11 +53,11 @@
         return;
       }
 
-      // Nutrition values are already scaled live by app.js for this serving.
-      var calories = parseFloat(calEl.textContent) || 0;
-      var protein = parseFloat(proEl.textContent) || 0;
-      var fat = parseFloat(fatEl.textContent) || 0;
-      var carbs = parseFloat(carbEl.textContent) || 0;
+// Nutrition values are already scaled live by app.js for this serving.
+      var calories = Math.round(parseFloat(calEl.textContent) || 0);
+      var protein = Math.round(parseFloat(proEl.textContent) || 0);
+      var fat = Math.round(parseFloat(fatEl.textContent) || 0);
+      var carbs = Math.round(parseFloat(carbEl.textContent) || 0);
 
       btnSaveMeal.disabled = true;
       btnSaveMeal.textContent = "Saving...";
@@ -71,15 +71,59 @@
         return;
       }
 
+      var imageId = null;
+      var imageUploadFailed = false;
+      var imageFile = window.__foodImageFile;
+      if (imageFile) {
+        var ext = (imageFile.name || "photo.jpg")
+          .split(".")
+          .pop()
+          .toLowerCase();
+        if (["jpg", "jpeg", "png", "webp", "gif"].indexOf(ext) === -1) ext = "jpg";
+        var path =
+          "meals/" +
+          session.session.user.id +
+          "/" +
+          Date.now() +
+          "-" +
+          Math.random().toString(36).slice(2) +
+          "." +
+          ext;
+        var upRes = await supabase.storage
+          .from("meal-images")
+          .upload(path, imageFile, {
+            contentType: imageFile.type || "image/jpeg",
+          });
+        if (!upRes.error) {
+          var pub = supabase.storage
+            .from("meal-images")
+            .getPublicUrl(path);
+          var imgInsert = await supabase
+            .from("food_images")
+            .insert({
+              user_id: session.session.user.id,
+              image_url: pub.data.publicUrl,
+              predicted_label: foodName,
+              source: "user_upload",
+            })
+            .select("id")
+            .single();
+          if (imgInsert.data) imageId = imgInsert.data.id;
+        } else {
+          imageUploadFailed = true;
+        }
+      }
+
       var { error } = await supabase.from("meals").insert({
         user_id: session.session.user.id,
         meal_type: mealType.value,
         food_name: foodName,
         serving_size_g: servingG,
-        calories: parseFloat(calories.toFixed(1)),
-        protein_g: parseFloat(protein.toFixed(1)),
-        fat_g: parseFloat(fat.toFixed(1)),
-        carbs_g: parseFloat(carbs.toFixed(1)),
+        image_id: imageId,
+        calories: calories,
+        protein_g: protein,
+        fat_g: fat,
+        carbs_g: carbs,
       });
 
       if (error) {
@@ -90,7 +134,8 @@
           foodName +
           " saved to " +
           mealType.options[mealType.selectedIndex].text +
-          "!";
+          "!" +
+          (imageUploadFailed ? " (image upload failed)" : "");
         refreshTracker();
         loadTodayMeals();
         showMealSuccess(foodName);
@@ -217,10 +262,10 @@
       {
         user_id: session.session.user.id,
         date: today,
-        total_calories: parseFloat(totalCal.toFixed(1)),
-        total_protein_g: parseFloat(totalPro.toFixed(1)),
-        total_fat_g: parseFloat(totalFat.toFixed(1)),
-        total_carbs_g: parseFloat(totalCarbs.toFixed(1)),
+        total_calories: Math.round(totalCal),
+        total_protein_g: Math.round(totalPro),
+        total_fat_g: Math.round(totalFat),
+        total_carbs_g: Math.round(totalCarbs),
         total_water_ml: totalWater,
         meal_count: meals ? meals.length : 0,
         calorie_goal_met: calPct >= 90,
@@ -339,38 +384,9 @@
       html =
         '<p class="meal-empty">No meals logged yet. Upload a food photo to get started!</p>';
     } else {
-      var typeIcons = {
-        breakfast: "🌅",
-        lunch: "☀️",
-        dinner: "🌙",
-        snack: "🍿",
-      };
       html = meals
         .map(function (m) {
-          var icon = typeIcons[m.meal_type] || "🍽️";
-          var time = new Date(m.logged_at).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          return (
-            '<div class="meal-item">' +
-            '<span class="meal-item-icon">' +
-            icon +
-            "</span>" +
-            '<span class="meal-item-name">' +
-            m.food_name +
-            "</span>" +
-            '<span class="meal-item-cals">' +
-            parseFloat(m.calories).toFixed(0) +
-            " kcal</span>" +
-            '<span class="meal-item-time">' +
-            time +
-            "</span>" +
-            '<span class="meal-item-type">' +
-            m.meal_type +
-            "</span>" +
-            "</div>"
-          );
+          return window.buildMealItemHTML(m, null, false);
         })
         .join("");
     }

@@ -22,7 +22,7 @@
         }
       })();
     </script>
-    <link rel="stylesheet" href="/static/styles.css?v=20260816b" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260816c" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
@@ -293,42 +293,6 @@
                 <li>🍯 Honey</li>
               </ul>
             </section>
-
-            <!-- ═══ Camera Modal ═══ -->
-            <div class="camera-modal hidden" id="cameraModal">
-              <div class="camera-modal-box">
-                <div class="camera-frame" aria-hidden="true">
-                  <div
-                    class="camera-live-status"
-                    id="cameraLiveStatus"
-                    data-state="scanning"
-                  >
-                    <span class="camera-live-dot"></span>
-                    <span id="cameraLiveText">Starting AI scanner...</span>
-                  </div>
-                  <div class="camera-detection-grid"></div>
-                  <div class="camera-scan-beam"></div>
-                  <div class="camera-target">
-                    <span class="camera-corner corner-top-left"></span>
-                    <span class="camera-corner corner-top-right"></span>
-                    <span class="camera-corner corner-bottom-left"></span>
-                    <span class="camera-corner corner-bottom-right"></span>
-                  </div>
-                  <div class="camera-detection-hint" id="cameraDetectionHint">
-                    Center food in frame
-                  </div>
-                </div>
-                <video id="cameraVideo" autoplay playsinline muted></video>
-                <div class="camera-modal-actions">
-                  <button type="button" class="btn btn-camera-capture" id="btnCameraCapture">
-                    📸 Capture
-                  </button>
-                  <button type="button" class="btn btn-camera-close" id="btnCameraClose">
-                    ✕
-                  </button>
-                </div>
-              </div>
-            </div>
 
             <!-- ═══ Spinner ═══ -->
             <div class="spinner-container hidden" id="spinnerContainer">
@@ -1125,6 +1089,95 @@
           </div>
         </section>
       </main>
+
+      <!-- ═══ Modals (outside views so they overlay every page) ═══ -->
+      <div class="camera-modal hidden" id="cameraModal">
+        <div class="camera-modal-box">
+          <div class="camera-frame" aria-hidden="true">
+            <div
+              class="camera-live-status"
+              id="cameraLiveStatus"
+              data-state="scanning"
+            >
+              <span class="camera-live-dot"></span>
+              <span id="cameraLiveText">Starting AI scanner...</span>
+            </div>
+            <div class="camera-detection-grid"></div>
+            <div class="camera-scan-beam"></div>
+            <div class="camera-target">
+              <span class="camera-corner corner-top-left"></span>
+              <span class="camera-corner corner-top-right"></span>
+              <span class="camera-corner corner-bottom-left"></span>
+              <span class="camera-corner corner-bottom-right"></span>
+            </div>
+            <div class="camera-detection-hint" id="cameraDetectionHint">
+              Center food in frame
+            </div>
+          </div>
+          <video id="cameraVideo" autoplay playsinline muted></video>
+          <div class="camera-modal-actions">
+            <button type="button" class="btn btn-camera-capture" id="btnCameraCapture">
+              📸 Capture
+            </button>
+            <button type="button" class="btn btn-camera-close" id="btnCameraClose">
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="camera-modal hidden" id="mealDetailModal">
+        <div class="meal-detail-box">
+          <button
+            type="button"
+            class="meal-detail-close"
+            id="mealDetailClose"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+          <div class="meal-detail-image-wrap">
+            <img
+              id="mealDetailImage"
+              class="meal-detail-image hidden"
+              alt="Meal photo"
+            />
+            <div class="meal-detail-noimage hidden" id="mealDetailNoImage">
+              🍽️
+            </div>
+          </div>
+          <h3 class="meal-detail-name" id="mealDetailName">—</h3>
+          <p class="meal-detail-meta" id="mealDetailMeta"></p>
+          <p class="meal-detail-serving">
+            Serving size <strong id="mealDetailServing">—</strong>
+          </p>
+          <div class="meal-detail-macros">
+            <div class="meal-detail-macro">
+              <span class="meal-detail-value" id="mealDetailCal">—</span>
+              <span class="meal-detail-label">kcal</span>
+            </div>
+            <div class="meal-detail-macro">
+              <span class="meal-detail-value" id="mealDetailPro">—</span>
+              <span class="meal-detail-label">Protein</span>
+            </div>
+            <div class="meal-detail-macro">
+              <span class="meal-detail-value" id="mealDetailFat">—</span>
+              <span class="meal-detail-label">Fat</span>
+            </div>
+            <div class="meal-detail-macro">
+              <span class="meal-detail-value" id="mealDetailCarbs">—</span>
+              <span class="meal-detail-label">Carbs</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn btn-save-meal meal-detail-close-btn"
+            id="mealDetailCloseBtn"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- ═══ Onboarding Overlay ═══ -->
@@ -1208,11 +1261,11 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="/static/app.js?v=20260816b"></script>
-    <script src="/static/tracker.js?v=20260816b"></script>
+<script src="/static/app.js?v=20260816e"></script>
+    <script src="/static/tracker.js?v=20260816e"></script>
     <script src="/static/nav.js?v=20260814"></script>
     <script src="/static/onboarding.js?v=20260814"></script>
-    <script src="/static/history.js?v=20260814"></script>
+    <script src="/static/history.js?v=20260816c"></script>
     <script src="/static/stats.js?v=20260814"></script>
     <script src="/static/profile.js?v=20260814"></script>
   </body>

@@ -178,10 +178,11 @@ function resetUI() {
   uploadContent.classList.remove("hidden");
   uploadPreview.classList.add("hidden");
   previewImage.src = "";
-  currentFile = null;
+currentFile = null;
   predictionData = null;
   currentSource = "gallery";
   currentNutritionPer100g = null;
+  window.__foodImageFile = null;
   saveMeal.classList.add("hidden");
   servingSize.value = "100";
   saveMealNote.textContent = "";
@@ -406,8 +407,9 @@ function handleFile(file, source = "gallery") {
     return;
   }
 
-  currentFile = file;
+currentFile = file;
   currentSource = source;
+  window.__foodImageFile = file;
 
   // Show preview
   const reader = new FileReader();
@@ -591,7 +593,7 @@ function normalizeNutrition(raw) {
 }
 
 function formatNutrient(value) {
-  return Number(value.toFixed(1)).toString();
+  return String(Math.round(value));
 }
 
 function renderNutritionForServing() {
@@ -680,6 +682,161 @@ async function showNutritionCard(foodKey, providedNutrition = null) {
 }
 
 servingSize.addEventListener("input", renderNutritionForServing);
+
+// ── Meal detail modal (shared with tracker.js / history.js) ────────────
+var MEAL_TYPE_ICONS = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍿" };
+
+function mealDetailTime(loggedAt) {
+  var d = new Date(loggedAt);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+window.buildMealItemHTML = function (m, imageUrl, clickable) {
+  var t = mealDetailTime(m.logged_at);
+  if (clickable === false) {
+    return (
+      '<div class="meal-item">' +
+      '<span class="meal-item-icon">' +
+      (MEAL_TYPE_ICONS[m.meal_type] || "🍽️") +
+      "</span>" +
+      '<span class="meal-item-name">' +
+      m.food_name +
+      "</span>" +
+      '<span class="meal-item-cals">' +
+      Math.round(parseFloat(m.calories) || 0) +
+      " kcal</span>" +
+      '<span class="meal-item-time">' +
+      t +
+      "</span>" +
+      '<span class="meal-item-type">' +
+      m.meal_type +
+      "</span>" +
+      "</div>"
+    );
+  }
+  var lead = imageUrl
+    ? '<img class="meal-item-thumb" src="' + imageUrl + '" alt="' + m.food_name + '" loading="lazy" />'
+    : '<span class="meal-item-icon">' + (MEAL_TYPE_ICONS[m.meal_type] || "🍽️") + "</span>";
+  return (
+    '<button type="button" class="meal-item meal-item-btn" data-meal-id="' +
+    m.id +
+    '">' +
+    lead +
+    '<span class="meal-item-name">' +
+    m.food_name +
+    "</span>" +
+    '<span class="meal-item-cals">' +
+    Math.round(parseFloat(m.calories) || 0) +
+    " kcal</span>" +
+    '<span class="meal-item-time">' +
+    t +
+    "</span>" +
+    '<span class="meal-item-type">' +
+    m.meal_type +
+    "</span>" +
+    "</button>"
+  );
+};
+
+window.bindMealItemClicks = function (container, meals, imageMap) {
+  if (!container) return;
+  container.querySelectorAll(".meal-item-btn").forEach(function (el) {
+    el.addEventListener("click", function () {
+      var id = el.getAttribute("data-meal-id");
+      var meal = (meals || []).find(function (m) {
+        return String(m.id) === String(id);
+      });
+      if (meal) {
+        meal.image_url = (imageMap || {})[meal.image_id] || null;
+        window.openMealDetail(meal);
+      }
+    });
+  });
+};
+
+window.fetchMealImages = async function (imageIds) {
+  var map = {};
+  if (!window.__supabase) return map;
+  var ids = (imageIds || []).filter(Boolean);
+  if (!ids.length) return map;
+  var CHUNK = 50;
+  for (var i = 0; i < ids.length; i += CHUNK) {
+    var { data, error } = await window.__supabase
+      .from("food_images")
+      .select("id, image_url")
+      .in("id", ids.slice(i, i + CHUNK));
+    if (!error && data) {
+      data.forEach(function (r) {
+        map[r.id] = r.image_url;
+      });
+    }
+  }
+  return map;
+};
+
+window.openMealDetail = function (meal) {
+  var modal = document.getElementById("mealDetailModal");
+  var img = document.getElementById("mealDetailImage");
+  var noImg = document.getElementById("mealDetailNoImage");
+  var nameEl = document.getElementById("mealDetailName");
+  var metaEl = document.getElementById("mealDetailMeta");
+  var servingEl = document.getElementById("mealDetailServing");
+  var calEl = document.getElementById("mealDetailCal");
+  var proEl = document.getElementById("mealDetailPro");
+  var fatEl = document.getElementById("mealDetailFat");
+  var carbsEl = document.getElementById("mealDetailCarbs");
+  if (!modal || !nameEl) return;
+
+  if (meal.image_url) {
+    img.src = meal.image_url;
+    img.classList.remove("hidden");
+    if (noImg) noImg.classList.add("hidden");
+  } else {
+    img.src = "";
+    img.classList.add("hidden");
+    if (noImg) noImg.classList.remove("hidden");
+  }
+
+  nameEl.textContent = meal.food_name;
+  metaEl.textContent =
+    (MEAL_TYPE_ICONS[meal.meal_type] || "🍽️") +
+    " " +
+    meal.meal_type +
+    " · " +
+    mealDetailTime(meal.logged_at);
+  servingEl.textContent = Math.round(parseFloat(meal.serving_size_g) || 0) + " g";
+  calEl.textContent = Math.round(parseFloat(meal.calories) || 0);
+  proEl.textContent = Math.round(parseFloat(meal.protein_g) || 0) + "g";
+  fatEl.textContent = Math.round(parseFloat(meal.fat_g) || 0) + "g";
+  carbsEl.textContent = Math.round(parseFloat(meal.carbs_g) || 0) + "g";
+
+  modal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+};
+
+window.closeMealDetail = function () {
+  var modal = document.getElementById("mealDetailModal");
+  if (modal) modal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+};
+
+(function wireMealDetailModal() {
+  var modal = document.getElementById("mealDetailModal");
+  if (!modal) return;
+  var closeBtn = document.getElementById("mealDetailClose");
+  var closeBtn2 = document.getElementById("mealDetailCloseBtn");
+  if (closeBtn) closeBtn.addEventListener("click", window.closeMealDetail);
+  if (closeBtn2) closeBtn2.addEventListener("click", window.closeMealDetail);
+  modal.addEventListener("click", function (e) {
+    if (e.target === modal) window.closeMealDetail();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") window.closeMealDetail();
+  });
+  // Close whenever the active view changes so it never lingers over another page
+  window.addEventListener("hashchange", window.closeMealDetail);
+})();
 
 // ── "Correct" button ────────────────────────────────────────────────────
 btnCorrect.addEventListener("click", () => {
