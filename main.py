@@ -64,7 +64,7 @@ model = load_keras_model(MODEL_PATH)
 print(f"✅ Loaded food-10 classifier from {MODEL_PATH}")
 
 # ── Load the food / not-food detector model ────────────────────────────
-FOOD_DETECTOR_PATH = Path("model/food_or_not_food_detector.keras")
+FOOD_DETECTOR_PATH = Path("model/food_or_not_food_detector_v2.keras")
 food_detector = load_keras_model(FOOD_DETECTOR_PATH)
 FOOD_DETECTOR_SIZE = 224  # input size for the food detector
 FOOD_DETECTOR_THRESHOLD = 0.5  # confidence threshold for "food"
