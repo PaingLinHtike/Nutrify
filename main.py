@@ -2,6 +2,7 @@
 import csv
 import io
 import json
+import logging
 import os
 import tempfile
 import zipfile
@@ -9,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import onnxruntime as ort
 import tensorflow as tf
 import uvicorn
 from fastapi import FastAPI, File, Form, UploadFile
@@ -21,6 +23,7 @@ from utils import create_unique_filename, upload_blob
 from config.database import insert_food_metadata
 
 app = FastAPI(title="VitaVision API")
+logger = logging.getLogger(__name__)
 
 
 # ── Helper: load models with potential config issues ──────────────────
@@ -69,6 +72,29 @@ food_detector = load_keras_model(FOOD_DETECTOR_PATH)
 FOOD_DETECTOR_SIZE = 224  # input size for the food detector
 FOOD_DETECTOR_THRESHOLD = 0.5  # confidence threshold for "food"
 print(f"✅ Loaded food/not-food detector from {FOOD_DETECTOR_PATH}")
+
+# The browser camera uses the ONNX export of this .pt checkpoint. ONNX Runtime
+# keeps continuous frame inference lightweight and uses the exact trained weights.
+REALTIME_MODEL_SOURCE_PATH = Path("model/realtime_food_recognition.pt")
+REALTIME_MODEL_PATH = Path("model/realtime_food_recognition.onnx")
+realtime_session = None
+if REALTIME_MODEL_SOURCE_PATH.exists() and REALTIME_MODEL_PATH.exists():
+    available_providers = ort.get_available_providers()
+    providers = [
+        provider
+        for provider in ("CUDAExecutionProvider", "CPUExecutionProvider")
+        if provider in available_providers
+    ]
+    realtime_session = ort.InferenceSession(str(REALTIME_MODEL_PATH), providers=providers)
+    print(
+        f"✅ Loaded real-time recognition model exported from "
+        f"{REALTIME_MODEL_SOURCE_PATH} | providers: {providers}"
+    )
+else:
+    print(
+        f"⚠️ Real-time model unavailable; expected "
+        f"{REALTIME_MODEL_SOURCE_PATH} and {REALTIME_MODEL_PATH}"
+    )
 
 CLASS_NAMES = [
     "apple",
@@ -249,6 +275,82 @@ async def predict_food(file: UploadFile = File(...)):
         "image_width": width,
         "image_height": height,
     }
+
+
+# ── Continuous camera detection endpoint ────────────────────────────────
+@app.post("/predict-yolo")
+async def predict_camera_frame(file: UploadFile = File(...)):
+    """Gate a camera frame as food/not-food, then recognize supported food."""
+    if realtime_session is None:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Real-time food recognition model is unavailable"},
+        )
+
+    contents = await file.read()
+    try:
+        image = Image.open(io.BytesIO(contents)).convert("RGB")
+    except Exception:
+        return JSONResponse(status_code=400, content={"error": "Could not decode camera frame"})
+
+    try:
+        detector_image = image.resize(
+            (FOOD_DETECTOR_SIZE, FOOD_DETECTOR_SIZE),
+            Image.Resampling.NEAREST,
+        )
+        detector_array = np.asarray(detector_image, dtype=np.float32) / 255.0
+        detector_array = np.expand_dims(detector_array, axis=0)
+        detector_prediction = food_detector(detector_array, training=False).numpy()
+        food_score = float(detector_prediction[0][0])
+
+        if food_score < FOOD_DETECTOR_THRESHOLD:
+            return {
+                "is_food": False,
+                "food_detection_confidence": food_score,
+                "not_food_confidence": 1.0 - food_score,
+            }
+
+        recognition_image = image.resize((224, 224), Image.Resampling.BILINEAR)
+        recognition_array = np.asarray(recognition_image, dtype=np.float32) / 255.0
+        recognition_array = np.transpose(recognition_array, (2, 0, 1))
+        recognition_array = np.expand_dims(recognition_array, axis=0).astype(np.float32)
+
+        input_name = realtime_session.get_inputs()[0].name
+        probabilities = realtime_session.run(None, {input_name: recognition_array})[0][0]
+        probabilities = np.asarray(probabilities, dtype=np.float32)
+        if np.any(probabilities < 0) or not np.isclose(probabilities.sum(), 1.0, atol=1e-3):
+            exponentials = np.exp(probabilities - np.max(probabilities))
+            probabilities = exponentials / exponentials.sum()
+
+        predicted_index = int(np.argmax(probabilities))
+        predicted_food = CLASS_NAMES[predicted_index]
+        confidence = float(probabilities[predicted_index])
+        top_indices = np.argsort(probabilities)[-3:][::-1]
+        top_predictions = [
+            {
+                "label": CLASS_NAMES[int(index)],
+                "confidence": float(probabilities[index]),
+            }
+            for index in top_indices
+        ]
+
+        return {
+            "is_food": True,
+            "food_detection_confidence": food_score,
+            "prediction": predicted_food,
+            "confidence": confidence,
+            "top_predictions": top_predictions,
+            "nutrition": NUTRITION_DATA.get(predicted_food),
+            "image_width": image.width,
+            "image_height": image.height,
+            "recognition_model": REALTIME_MODEL_SOURCE_PATH.name,
+        }
+    except Exception:
+        logger.exception("Continuous camera prediction failed")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Continuous camera prediction failed"},
+        )
 
 
 # ── Confirmation / storage endpoint ─────────────────────────────────────
