@@ -352,33 +352,53 @@
             await supabase.auth.signUp({
               email,
               password,
+              options: { data: { full_name: fullName } },
             });
 
           if (authError) {
-            showMessage(authError.message, "error");
+            let msg = authError.message;
+            if (
+              authError.error_code === "over_email_send_rate_limit" ||
+              /rate\s*limit/i.test(msg)
+            ) {
+              msg =
+                "Too many signup emails were sent from this project. Please wait up to an hour and try again.";
+            }
+            showMessage(msg, "error");
             btnSignUp.disabled = false;
             btnSignUp.textContent = "Create Account";
             return;
           }
 
           if (authData.user) {
-            const { error: profileError } = await supabase
-              .from("user_profiles")
-              .insert({ id: authData.user.id, full_name: fullName });
-            if (profileError) {
-              showMessage(
-                "Account created but profile save failed: " +
-                  profileError.message,
-                "error",
-              );
-              btnSignUp.disabled = false;
-              btnSignUp.textContent = "Create Account";
-              return;
+            // Best-effort: if a session was issued immediately (email
+            // confirmations disabled), make sure the profile row exists.
+            // Never block account creation on this — a database trigger on
+            // auth.users already creates the profile server-side.
+            if (authData.session) {
+              await supabase
+                .from("user_profiles")
+                .upsert(
+                  { id: authData.user.id, full_name: fullName },
+                  { onConflict: "id" },
+                )
+                .then(function () {})
+                .catch(function () {});
             }
-            showMessage("✅ Account created! Redirecting...", "success");
-            setTimeout(function () {
-              window.location.href = "/app";
-            }, 800);
+            btnSignUp.disabled = false;
+            btnSignUp.textContent = "Create Account";
+
+            if (authData.session) {
+              showMessage("✅ Account created! Redirecting...", "success");
+              setTimeout(function () {
+                window.location.href = "/app";
+              }, 800);
+            } else {
+              showMessage(
+                "📧 Account created! Check your email to confirm your account.",
+                "success",
+              );
+            }
           }
         });
 

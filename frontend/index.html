@@ -45,9 +45,11 @@
 
         supabase.auth.getSession().then(function (res) {
           if (!res.data.session) {
-            window.location.href = "/auth";
-          } else {
-            document.body.classList.add("authenticated");
+            window.location.replace("/auth");
+            return;
+          }
+          document.body.classList.add("authenticated");
+          function revealAuthUI() {
             var userEl = document.getElementById("navUser");
             if (userEl) {
               userEl.textContent = res.data.session.user.email;
@@ -55,6 +57,11 @@
             }
             var signOutEl = document.getElementById("navSignOut");
             if (signOutEl) signOutEl.classList.remove("hidden");
+          }
+          if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", revealAuthUI);
+          } else {
+            revealAuthUI();
           }
         });
       })();
@@ -175,6 +182,19 @@
               <span class="nav-icon">👤</span
               ><span class="nav-label">Profile</span>
             </a>
+            <button
+              type="button"
+              class="nav-item nav-signout hidden"
+              id="navSignOut"
+              onclick="
+                window.__supabase.auth.signOut().then(function () {
+                  window.location.replace('/auth');
+                })
+              "
+            >
+              <span class="nav-icon">🚪</span
+              ><span class="nav-label">Log Out</span>
+            </button>
 
             <p class="nav-section-title">Preference</p>
             <button
@@ -202,17 +222,6 @@
           </nav>
           <div class="sidebar-footer">
             <span id="navUser" class="sidebar-user hidden"></span>
-            <a
-              href="#"
-              id="navSignOut"
-              class="sidebar-signout hidden"
-              onclick="
-                window.__supabase.auth.signOut().then(function () {
-                  window.location.href = '/auth';
-                })
-              "
-              >Sign Out</a
-            >
           </div>
         </div>
       </aside>
