@@ -361,9 +361,6 @@
                       <span class="serving-unit">g</span>
                     </span>
                   </label>
-                  <button type="button" class="btn btn-save-meal" id="btnSaveMeal">
-                    💾 Save Meal
-                  </button>
                 </div>
                 <p class="save-meal-note" id="saveMealNote"></p>
               </div>
@@ -422,15 +419,24 @@
 
               <!-- Confirmation -->
               <div class="confirmation">
-                <p class="confirmation-question">Is this correct?</p>
-                <div class="confirmation-buttons">
-                  <button class="btn btn-correct" id="btnCorrect">
-                    ✓ Correct
-                  </button>
-                  <button class="btn btn-incorrect" id="btnIncorrect">
-                    ✗ Incorrect
-                  </button>
+                <div id="confirmationChoices">
+                  <p class="confirmation-question">Is this correct?</p>
+                  <div class="confirmation-buttons">
+                    <button class="btn btn-correct" id="btnCorrect">
+                      ✓ Correct
+                    </button>
+                    <button class="btn btn-incorrect" id="btnIncorrect">
+                      ✗ Incorrect
+                    </button>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  class="btn btn-save-meal hidden"
+                  id="btnSaveMeal"
+                >
+                  💾 Save Meal
+                </button>
               </div>
 
               <!-- Correction Form (hidden initially) -->
@@ -882,7 +888,7 @@
               <div class="stat-card">
                 <div class="stat-icon-circle blue">📊</div>
                 <div class="stat-value" id="statAvgCal">0</div>
-                <div class="stat-label">Avg kcal / day</div>
+                <div class="stat-label">Total calories</div>
               </div>
               <div class="stat-card">
                 <div class="stat-icon-circle pink">🎯</div>
@@ -1261,12 +1267,12 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="/static/app.js?v=20260816e"></script>
+<script src="/static/app.js?v=20260816f"></script>
     <script src="/static/tracker.js?v=20260816e"></script>
     <script src="/static/nav.js?v=20260814"></script>
     <script src="/static/onboarding.js?v=20260814"></script>
     <script src="/static/history.js?v=20260816c"></script>
-    <script src="/static/stats.js?v=20260814"></script>
+    <script src="/static/stats.js?v=20260816f"></script>
     <script src="/static/profile.js?v=20260814"></script>
   </body>
 </html>

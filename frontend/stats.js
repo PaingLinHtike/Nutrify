@@ -66,12 +66,12 @@
     var mealsEl = document.getElementById("statMeals");
     if (mealsEl) mealsEl.textContent = mealsArr.length;
 
-    // Average calories
+    // Total calories (all logged days)
     var totalCal = sums.reduce(function (a, s) {
       return a + (parseFloat(s.total_calories) || 0);
     }, 0);
-    var avgCal = sums.length ? Math.round(totalCal / sums.length) : 0;
-    document.getElementById("statAvgCal").textContent = avgCal;
+    document.getElementById("statAvgCal").textContent =
+      Math.round(totalCal).toLocaleString();
 
     // Calorie goal met %
     var metCount = sums.filter(function (s) {

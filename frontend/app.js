@@ -28,6 +28,8 @@ const topList = document.getElementById("topList");
 const topPredictions = document.getElementById("topPredictions");
 const btnCorrect = document.getElementById("btnCorrect");
 const btnIncorrect = document.getElementById("btnIncorrect");
+const confirmationChoices = document.getElementById("confirmationChoices");
+const btnSaveMeal = document.getElementById("btnSaveMeal");
 const correctionForm = document.getElementById("correctionForm");
 const foodSearchInput = document.getElementById("foodSearchInput");
 const foodDropdown = document.getElementById("foodDropdown");
@@ -174,6 +176,8 @@ function resetUI() {
   nutritionCard.classList.add("hidden");
   metaForm.classList.add("hidden");
   successState.classList.add("hidden");
+  confirmationChoices.classList.remove("hidden");
+  btnSaveMeal.classList.add("hidden");
   uploadZone.classList.remove("has-image");
   uploadContent.classList.remove("hidden");
   uploadPreview.classList.add("hidden");
@@ -842,6 +846,8 @@ window.closeMealDetail = function () {
 btnCorrect.addEventListener("click", () => {
   if (!predictionData) return;
   correctionForm.classList.add("hidden");
+  confirmationChoices.classList.add("hidden");
+  btnSaveMeal.classList.remove("hidden");
   showNutritionCard(predictionData.prediction, predictionData.nutrition);
   // Only show legacy metaForm if NOT authenticated
   if (!window.__supabase) {
@@ -851,6 +857,7 @@ btnCorrect.addEventListener("click", () => {
 
 // ── "Incorrect" button ──────────────────────────────────────────────────
 btnIncorrect.addEventListener("click", () => {
+  confirmationChoices.classList.add("hidden");
   correctionForm.classList.remove("hidden");
   selectedFood = null;
   selectedFoodKey = null;
@@ -981,7 +988,9 @@ btnSubmitCorrection.addEventListener("click", () => {
     showError("Please select or type a food name.");
     return;
   }
-  correctionForm.classList.add("hidden");
+correctionForm.classList.add("hidden");
+  confirmationChoices.classList.add("hidden");
+  btnSaveMeal.classList.remove("hidden");
   resultFood.textContent = capitalize(corrected);
   resultIcon.textContent = getFoodEmoji(selectedFoodKey || corrected);
   showNutritionCard(selectedFoodKey || corrected);
