@@ -1310,6 +1310,10 @@ footer {
   min-height: 100vh;
 }
 
+body:not(.authenticated) .app-layout {
+  visibility: hidden;
+}
+
 .sidebar {
   width: 240px;
   flex-shrink: 0;
@@ -1363,6 +1367,21 @@ footer {
   color: #ffffff;
 }
 
+.nav-signout {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-signout:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
 .nav-icon {
   font-size: 1.15rem;
 }
@@ -1379,17 +1398,6 @@ footer {
   color: #6b7280;
   font-size: 0.78rem;
   word-break: break-all;
-}
-
-.sidebar-signout {
-  color: #ef4444;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.sidebar-signout:hover {
-  text-decoration: underline;
 }
 
 .main-content {
@@ -3597,6 +3605,15 @@ html[data-theme="dark"] .nav-item {
 html[data-theme="dark"] .nav-item:hover {
   background: #1e293b;
   color: #f1f5f9;
+}
+
+html[data-theme="dark"] .nav-signout {
+  color: #f87171;
+}
+
+html[data-theme="dark"] .nav-signout:hover {
+  background: #3f1d26;
+  color: #fca5a5;
 }
 
 html[data-theme="dark"] .nav-item.active {

@@ -2,7 +2,6 @@
 import csv
 import io
 import json
-import logging
 import os
 import tempfile
 import zipfile
@@ -17,14 +16,11 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
-import onnxruntime as ort
-
 from save_to_gsheets import append_values_to_gsheet
 from utils import create_unique_filename, upload_blob
 from config.database import insert_food_metadata
 
 app = FastAPI(title="VitaVision API")
-logger = logging.getLogger(__name__)
 
 
 # ── Helper: load models with potential config issues ──────────────────
@@ -73,17 +69,7 @@ food_detector = load_keras_model(FOOD_DETECTOR_PATH)
 FOOD_DETECTOR_SIZE = 224  # input size for the food detector
 FOOD_DETECTOR_THRESHOLD = 0.5  # confidence threshold for "food"
 print(f"✅ Loaded food/not-food detector from {FOOD_DETECTOR_PATH}")
-# ── Load the real-time food recognition model exported from its .pt checkpoint ──
-YOLO_ONNX_PATH = Path("model/realtime_food_recognition.onnx")
-yolo_session = None
-if YOLO_ONNX_PATH.exists():
-    providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
-    available = ort.get_available_providers()
-    providers = [p for p in providers if p in available]
-    yolo_session = ort.InferenceSession(str(YOLO_ONNX_PATH), providers=providers)
-    print(f"��� Loaded real-time food model from {YOLO_ONNX_PATH} | providers: {providers}")
-else:
-    print(f"������ YOLO ONNX model not found at {YOLO_ONNX_PATH}")
+
 CLASS_NAMES = [
     "apple",
     "banana",
@@ -250,94 +236,6 @@ async def predict_food(file: UploadFile = File(...)):
         os.unlink(tmp_path)
 
     # ── Get original image dimensions from raw bytes ──
-    img_pil = Image.open(io.BytesIO(contents))
-    width, height = img_pil.size
-
-    return {
-        "is_food": True,
-        "food_detection_confidence": food_score,
-        "prediction": predicted_food,
-        "confidence": confidence,
-        "top_predictions": top_predictions,
-        "nutrition": NUTRITION_DATA.get(predicted_food),
-        "image_width": width,
-        "image_height": height,
-    }
-
-
-# ── YOLO11l Camera endpoint (real-time camera) ──────────────────────────
-@app.post("/predict-yolo")
-async def predict_yolo(file: UploadFile = File(...)):
-    """Receive an image from camera, detect if it's food, then classify with YOLO11l."""
-    if yolo_session is None:
-        return JSONResponse(
-            status_code=503,
-            content={"error": "YOLO11l model not available"},
-        )
-
-    contents = await file.read()
-
-    # Save uploaded bytes to a temporary file
-    suffix = Path(file.filename or "image.jpg").suffix or ".jpg"
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(contents)
-        tmp_path = tmp.name
-
-    try:
-        # ── Step 1: Food / Not-Food Detection ──
-        detector_img = tf.keras.preprocessing.image.load_img(
-            tmp_path,
-            target_size=(FOOD_DETECTOR_SIZE, FOOD_DETECTOR_SIZE),
-        )
-        detector_arr = tf.keras.preprocessing.image.img_to_array(detector_img)
-        detector_arr = detector_arr / 255.0
-        detector_arr = tf.expand_dims(detector_arr, axis=0)
-
-        detector_pred = food_detector.predict(detector_arr, verbose=0)
-        food_score = float(detector_pred[0][0])
-
-        if food_score < FOOD_DETECTOR_THRESHOLD:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "is_food": False,
-                    "food_detection_confidence": food_score,
-                    "message": "The uploaded image does not appear to be food. Please upload a photo of food.",
-                },
-            )
-
-        # ── Step 2: YOLO11l Classification ──
-        image = tf.keras.preprocessing.image.load_img(
-            tmp_path,
-            target_size=(224, 224),  # YOLO11l input size
-        )
-        input_arr = tf.keras.preprocessing.image.img_to_array(image)
-        input_arr = input_arr / 255.0
-        input_arr = np.transpose(input_arr, (2, 0, 1))  # HWC to ONNX NCHW
-        input_arr = np.expand_dims(input_arr, axis=0).astype(np.float32)
-
-        # Run YOLO11l ONNX inference
-        input_name = yolo_session.get_inputs()[0].name
-        outputs = yolo_session.run(None, {input_name: input_arr})
-        probs = outputs[0][0]  # Exported classifier output is already softmax-normalized
-
-        predicted_index = int(np.argmax(probs))
-        predicted_food = CLASS_NAMES[predicted_index]
-        confidence = float(probs[predicted_index])
-
-        # Top-3 predictions
-        top_indices = np.argsort(probs)[-3:][::-1]
-        top_predictions = [{"label": CLASS_NAMES[int(i)], "confidence": float(probs[i])} for i in top_indices]
-    except Exception:
-        logger.exception("YOLO camera prediction failed")
-        return JSONResponse(
-            status_code=500,
-            content={"error": "Camera prediction failed"},
-        )
-    finally:
-        os.unlink(tmp_path)
-
-    # Get original image dimensions
     img_pil = Image.open(io.BytesIO(contents))
     width, height = img_pil.size
 

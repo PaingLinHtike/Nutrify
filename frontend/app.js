@@ -8,6 +8,7 @@ const uploadContent = document.getElementById("uploadContent");
 const uploadPreview = document.getElementById("uploadPreview");
 const previewImage = document.getElementById("previewImage");
 const fileInput = document.getElementById("fileInput");
+const cameraInput = document.getElementById("cameraInput");
 const btnCamera = document.getElementById("btnCamera");
 const btnGallery = document.getElementById("btnGallery");
 const btnRemove = document.getElementById("btnRemove");
@@ -15,9 +16,6 @@ const cameraModal = document.getElementById("cameraModal");
 const cameraVideo = document.getElementById("cameraVideo");
 const btnCameraCapture = document.getElementById("btnCameraCapture");
 const btnCameraClose = document.getElementById("btnCameraClose");
-const cameraLiveStatus = document.getElementById("cameraLiveStatus");
-const cameraLiveText = document.getElementById("cameraLiveText");
-const cameraDetectionHint = document.getElementById("cameraDetectionHint");
 const spinnerContainer = document.getElementById("spinnerContainer");
 const resultCard = document.getElementById("resultCard");
 const resultIcon = document.getElementById("resultIcon");
@@ -63,7 +61,6 @@ const btnNewUpload = document.getElementById("btnNewUpload");
 // ── State ───────────────────────────────────────────────────────────────
 let currentFile = null; // Raw File object from input / drop
 let predictionData = null; // Response from /predict
-let currentSource = "gallery"; // "camera" or "gallery"
 
 // Food emoji map
 const FOOD_EMOJI = {
@@ -144,20 +141,6 @@ function formatPct(val) {
   return (val * 100).toFixed(1) + "%";
 }
 
-async function readJsonResponse(response) {
-  const text = await response.text();
-  if (!text) return {};
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    const summary = text.replace(/\s+/g, " ").trim().slice(0, 120);
-    throw new Error(
-      `Server returned ${response.status}: ${summary || "Invalid response"}`,
-    );
-  }
-}
-
 function nowISO() {
   return new Date().toISOString().replace("T", " ").slice(0, 19);
 }
@@ -203,132 +186,42 @@ uploadZone.addEventListener("click", (e) => {
 
 // ── Camera button: open the phone camera ────────────────────────────────
 let cameraStream = null;
-let liveDetectionTimer = null;
-let liveDetectionController = null;
-let liveDetectionErrorLogged = false;
 
-function setLiveDetectionState(state, text, hint) {
-  cameraLiveStatus.dataset.state = state;
-  cameraLiveText.textContent = text;
-  cameraDetectionHint.textContent = hint;
-}
-
-function scheduleLiveDetection(delay = 500) {
-  clearTimeout(liveDetectionTimer);
-  if (cameraStream) {
-    liveDetectionTimer = setTimeout(detectLiveFrame, delay);
-  }
-}
-
-async function detectLiveFrame() {
-  if (!cameraStream || cameraVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-    scheduleLiveDetection(400);
-    return;
-  }
-
-  const canvas = document.createElement("canvas");
-  const scale = Math.min(1, 320 / cameraVideo.videoWidth);
-  canvas.width = Math.round(cameraVideo.videoWidth * scale);
-  canvas.height = Math.round(cameraVideo.videoHeight * scale);
-  canvas.getContext("2d").drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
-
-  const blob = await new Promise((resolve) =>
-    canvas.toBlob(resolve, "image/jpeg", 0.72),
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(
+    navigator.userAgent,
   );
-  if (!blob || !cameraStream) return;
-
-  const formData = new FormData();
-  formData.append("file", blob, "live-frame.jpg");
-  const controller = new AbortController();
-  liveDetectionController = controller;
-  let nextDetectionDelay = 700;
-
-  try {
-    const response = await fetch("/predict-yolo", {
-      method: "POST",
-      body: formData,
-      signal: controller.signal,
-    });
-    const data = await readJsonResponse(response);
-
-    if (response.ok && data.is_food) {
-      liveDetectionErrorLogged = false;
-      setLiveDetectionState(
-        "food",
-        `${capitalize(data.prediction)} ${formatPct(data.confidence)}`,
-        "Food detected - ready to capture",
-      );
-    } else if (response.status === 400 && data.is_food === false) {
-      liveDetectionErrorLogged = false;
-      setLiveDetectionState("no-food", "No Food", "Point camera at food");
-    } else {
-      throw new Error(data.error || "Live detection unavailable");
-    }
-  } catch (err) {
-    if (err.name === "AbortError") return;
-    nextDetectionDelay = 5000;
-    if (!liveDetectionErrorLogged) {
-      console.warn("Live food detection unavailable:", err);
-      liveDetectionErrorLogged = true;
-    }
-    setLiveDetectionState(
-      "error",
-      "AI scanner unavailable",
-      "Retrying live detection...",
-    );
-  } finally {
-    if (liveDetectionController === controller) {
-      liveDetectionController = null;
-    }
-    if (!controller.signal.aborted) {
-      scheduleLiveDetection(nextDetectionDelay);
-    }
-  }
 }
 
-async function openLiveCamera() {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    showError("Live camera is unavailable. Use HTTPS and allow camera access.");
+async function openPhoneCamera() {
+  // Phones: open the native camera app directly via the capture input.
+  // This works on plain HTTP (LAN) where getUserMedia is blocked.
+  if (isMobileDevice()) {
+    cameraInput.value = "";
+    cameraInput.click();
     return;
   }
 
-  try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "environment" },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
-      audio: false,
-    });
-    cameraVideo.srcObject = cameraStream;
-    cameraModal.classList.remove("hidden");
-    liveDetectionErrorLogged = false;
-    setLiveDetectionState(
-      "scanning",
-      "Scanning for food...",
-      "Center food in frame",
-    );
-    await cameraVideo.play();
-    scheduleLiveDetection();
-  } catch (err) {
-    closeCamera();
-    const message =
-      err.name === "NotAllowedError"
-        ? "Camera permission was denied. Allow camera access and try again."
-        : "Unable to open the camera. Check that another app is not using it.";
-    showError(message);
-    console.error("Camera error:", err);
+  // Desktop: try the in-app webcam first (works on HTTPS / localhost)
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false,
+      });
+      cameraVideo.srcObject = cameraStream;
+      cameraModal.classList.remove("hidden");
+      return;
+    } catch (err) {
+      console.warn("In-app camera unavailable, using file picker:", err);
+    }
   }
+  // Final fallback: file picker (capture hint for mobile browsers)
+  cameraInput.value = "";
+  cameraInput.click();
 }
 
 function closeCamera() {
-  clearTimeout(liveDetectionTimer);
-  liveDetectionTimer = null;
-  if (liveDetectionController) {
-    liveDetectionController.abort();
-    liveDetectionController = null;
-  }
   if (cameraStream) {
     cameraStream.getTracks().forEach(function (t) {
       t.stop();
@@ -340,9 +233,14 @@ function closeCamera() {
 }
 
 btnCamera.addEventListener("click", (e) => {
-  e.preventDefault();
   e.stopPropagation();
-  openLiveCamera();
+  // Mobile: let the native label activation open the camera app directly
+  // (capture="environment") — works over plain HTTP, no JS required.
+  // Desktop: show the in-app webcam modal instead of the file picker.
+  if (!isMobileDevice()) {
+    e.preventDefault();
+    openPhoneCamera();
+  }
 });
 
 btnCameraClose.addEventListener("click", closeCamera);
@@ -359,7 +257,7 @@ btnCameraCapture.addEventListener("click", function () {
         type: "image/jpeg",
       });
       closeCamera();
-      handleFile(file, "camera");
+      handleFile(file);
     },
     "image/jpeg",
     0.92,
@@ -371,6 +269,13 @@ fileInput.addEventListener("change", () => {
   if (fileInput.files.length > 0) {
     handleFile(fileInput.files[0]);
     fileInput.value = "";
+  }
+});
+
+cameraInput.addEventListener("change", () => {
+  if (cameraInput.files.length > 0) {
+    handleFile(cameraInput.files[0]);
+    cameraInput.value = "";
   }
 });
 
@@ -400,7 +305,7 @@ btnRemove.addEventListener("click", (e) => {
 });
 
 // ── Handle a selected/dropped file ──────────────────────────────────────
-function handleFile(file, source = "gallery") {
+function handleFile(file) {
   // Validate
   const validTypes = ["image/jpeg", "image/png", "image/jpg"];
   if (!validTypes.includes(file.type)) {
@@ -409,7 +314,6 @@ function handleFile(file, source = "gallery") {
   }
 
   currentFile = file;
-  currentSource = source; // "camera" or "gallery"
 
   // Show preview
   const reader = new FileReader();
@@ -425,7 +329,7 @@ function handleFile(file, source = "gallery") {
   reader.readAsDataURL(file);
 }
 
-// ── Submit image to /predict (gallery) or /predict-yolo (camera) ────────
+// ── Submit image to /predict ────────────────────────────────────────────
 async function submitForPrediction(file) {
   // Hide previous results, show spinner
   resultCard.classList.add("hidden");
@@ -444,18 +348,15 @@ async function submitForPrediction(file) {
   const formData = new FormData();
   formData.append("file", file);
 
-  // Use different endpoints based on source
-  const endpoint = currentSource === "camera" ? "/predict-yolo" : "/predict";
-
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetch("/predict", {
       method: "POST",
       body: formData,
     });
 
     // ── Handle not-food detection (HTTP 400) ──
     if (!response.ok) {
-      const err = await readJsonResponse(response);
+      const err = await response.json();
       spinnerContainer.classList.add("hidden");
       if (scanOverlay) scanOverlay.classList.add("hidden");
 
@@ -468,7 +369,7 @@ async function submitForPrediction(file) {
       throw new Error(err.error || `Server error: ${response.status}`);
     }
 
-    predictionData = await readJsonResponse(response);
+    predictionData = await response.json();
     if (scanOverlay) scanOverlay.classList.add("hidden");
     showResults(predictionData);
   } catch (err) {
