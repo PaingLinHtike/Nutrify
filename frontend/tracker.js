@@ -75,41 +75,19 @@
       var imageUploadFailed = false;
       var imageFile = window.__foodImageFile;
       if (imageFile) {
-        var ext = (imageFile.name || "photo.jpg")
-          .split(".")
-          .pop()
-          .toLowerCase();
-        if (["jpg", "jpeg", "png", "webp", "gif"].indexOf(ext) === -1) ext = "jpg";
-        var path =
-          "meals/" +
-          session.session.user.id +
-          "/" +
-          Date.now() +
-          "-" +
-          Math.random().toString(36).slice(2) +
-          "." +
-          ext;
-        var upRes = await supabase.storage
-          .from("meal-images")
-          .upload(path, imageFile, {
-            contentType: imageFile.type || "image/jpeg",
-          });
-        if (!upRes.error) {
-          var pub = supabase.storage
-            .from("meal-images")
-            .getPublicUrl(path);
-          var imgInsert = await supabase
-            .from("food_images")
-            .insert({
-              user_id: session.session.user.id,
-              image_url: pub.data.publicUrl,
-              predicted_label: foodName,
-              source: "user_upload",
-            })
-            .select("id")
-            .single();
-          if (imgInsert.data) imageId = imgInsert.data.id;
-        } else {
+        try {
+          var uploaded = await window.uploadFoodImage(
+            imageFile,
+            session.session.user.id,
+            {
+              source: window.__foodImageSource || "user_upload",
+              label: foodName,
+              confidence: window.__foodImageConfidence || null,
+            },
+          );
+          imageId = uploaded.imageId;
+        } catch (err) {
+          console.error("Image upload failed:", err);
           imageUploadFailed = true;
         }
       }

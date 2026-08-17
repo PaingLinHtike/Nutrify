@@ -6,21 +6,16 @@ import logging
 import os
 import tempfile
 import zipfile
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
 import tensorflow as tf
 import uvicorn
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
-
-from save_to_gsheets import append_values_to_gsheet
-from utils import create_unique_filename, upload_blob
-from config.database import insert_food_metadata
 
 app = FastAPI(title="VitaVision API")
 logger = logging.getLogger(__name__)
@@ -341,93 +336,6 @@ async def predict_camera_frame(file: UploadFile = File(...)):
             status_code=500,
             content={"error": "Continuous camera prediction failed"},
         )
-
-
-# ── Confirmation / storage endpoint ─────────────────────────────────────
-@app.post("/confirm")
-async def confirm_prediction(
-    file: UploadFile = File(...),
-    label: str = Form(...),
-    email: str = Form(""),
-    country: str = Form(""),
-    source: str = Form("web-app"),
-):
-    """Store the image + metadata after user confirms (or corrects) the prediction."""
-    # 1. Generate unique ID & timestamp
-    image_id = create_unique_filename()
-    upload_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # 2. Read image to get dimensions (using PIL)
-    contents = await file.read()
-    try:
-        img_pil = Image.open(io.BytesIO(contents))
-        width, height = img_pil.size
-    except Exception:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Could not decode image for storage."},
-        )
-
-    # 3. Upload image to Google Cloud Storage
-    destination_blob_name = f"{image_id}.jpg"
-    try:
-        # Re-create a file-like object from the bytes
-        file_bytes = io.BytesIO(contents)
-        file_bytes.name = destination_blob_name
-        upload_blob(
-            file_bytes,
-            destination_blob_name,
-            content_type="image/jpeg",
-        )
-    except RuntimeError as error:
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Image upload failed: {error}"},
-        )
-
-    # 4. Store metadata in Google Sheets
-    metadata_row = [
-        image_id,
-        upload_time,
-        str(height),
-        str(width),
-        email,
-        country,
-        label,
-        source,
-    ]
-    try:
-        append_values_to_gsheet([metadata_row])
-    except (PermissionError, RuntimeError) as error:
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Metadata storage failed: {error}"},
-        )
-
-    # 5. Store metadata in PostgreSQL
-    try:
-        insert_food_metadata(
-            image_id=image_id,
-            upload_time=upload_time,
-            height=height,
-            width=width,
-            email=email,
-            country=country,
-            label=label,
-            source=source,
-        )
-    except Exception as error:
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Database storage failed: {error}"},
-        )
-
-    return {
-        "status": "success",
-        "image_id": image_id,
-        "label": label,
-        "message": f"Image stored as {image_id}.jpg with label '{label}'.",
-    }
 
 
 # ── Entry point ─────────────────────────────────────────────────────────

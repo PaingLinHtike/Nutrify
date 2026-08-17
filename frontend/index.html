@@ -493,51 +493,6 @@
               </div>
             </div>
 
-            <!-- ═══ Metadata Form ═══ -->
-            <div class="meta-form hidden" id="metaForm">
-              <div class="meta-card">
-                <h3>📋 Almost done! One last step</h3>
-                <p class="meta-subtitle">
-                  Add optional info before we save your submission.
-                </p>
-                <form id="metadataForm">
-                  <input type="hidden" id="finalLabel" />
-                  <input type="hidden" id="imageData" />
-
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label for="metaEmail"
-                        >📧 Email <span>(optional)</span></label
-                      >
-                      <input
-                        type="email"
-                        id="metaEmail"
-                        placeholder="you@example.com"
-                      />
-                    </div>
-                    <div class="form-group">
-                      <label for="metaCountry"
-                        >🌍 Country <span>(optional)</span></label
-                      >
-                      <input
-                        type="text"
-                        id="metaCountry"
-                        placeholder="e.g. Myanmar"
-                      />
-                    </div>
-                  </div>
-
-                  <button type="submit" class="btn btn-save" id="btnSave">
-                    💾 Save to Database
-                  </button>
-                </form>
-                <p class="meta-note">
-                  Your image will be stored securely on Google Cloud. Metadata
-                  is saved to a Google Sheet to help build the food dataset.
-                </p>
-              </div>
-            </div>
-
             <!-- ═══ Success State ═══ -->
             <div class="success-state hidden" id="successState">
               <div class="success-animation">
@@ -1276,7 +1231,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="/static/app.js?v=20260816f"></script>
+<script src="/static/upload.js?v=20260819a"></script>
+<script src="/static/app.js?v=20260819a"></script>
     <script src="/static/tracker.js?v=20260816e"></script>
     <script src="/static/nav.js?v=20260814"></script>
     <script src="/static/onboarding.js?v=20260814"></script>

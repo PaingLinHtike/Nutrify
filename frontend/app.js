@@ -53,17 +53,7 @@ const saveMeal = document.getElementById("saveMeal");
 const servingSize = document.getElementById("servingSize");
 const saveMealNote = document.getElementById("saveMealNote");
 const nutritionServingWeight = document.getElementById("nutritionServingWeight");
-const metaForm = document.getElementById("metaForm");
-const metadataForm = document.getElementById("metadataForm");
-const finalLabel = document.getElementById("finalLabel");
-const imageData = document.getElementById("imageData");
-const metaEmail = document.getElementById("metaEmail");
-const metaCountry = document.getElementById("metaCountry");
-const btnSave = document.getElementById("btnSave");
 const successState = document.getElementById("successState");
-const successImageId = document.getElementById("successImageId");
-const successLabel = document.getElementById("successLabel");
-const successTime = document.getElementById("successTime");
 const btnNewUpload = document.getElementById("btnNewUpload");
 
 // ── State ───────────────────────────────────────────────────────────────
@@ -164,17 +154,12 @@ async function readJsonResponse(response) {
   }
 }
 
-function nowISO() {
-  return new Date().toISOString().replace("T", " ").slice(0, 19);
-}
-
 function resetUI() {
   // Hide all dynamic sections
   spinnerContainer.classList.add("hidden");
   resultCard.classList.add("hidden");
   correctionForm.classList.add("hidden");
   nutritionCard.classList.add("hidden");
-  metaForm.classList.add("hidden");
   successState.classList.add("hidden");
   confirmationChoices.classList.remove("hidden");
   btnSaveMeal.classList.add("hidden");
@@ -187,6 +172,8 @@ currentFile = null;
   currentSource = "gallery";
   currentNutritionPer100g = null;
   window.__foodImageFile = null;
+  window.__foodImageSource = null;
+  window.__foodImageConfidence = null;
   saveMeal.classList.add("hidden");
   servingSize.value = "100";
   saveMealNote.textContent = "";
@@ -414,6 +401,8 @@ function handleFile(file, source = "gallery") {
 currentFile = file;
   currentSource = source;
   window.__foodImageFile = file;
+  window.__foodImageSource = source;
+  window.__foodImageConfidence = null;
 
   // Show preview
   const reader = new FileReader();
@@ -434,7 +423,6 @@ async function submitForPrediction(file) {
   // Hide previous results, show spinner
   resultCard.classList.add("hidden");
   correctionForm.classList.add("hidden");
-  metaForm.classList.add("hidden");
   nutritionCard.classList.add("hidden");
   successState.classList.add("hidden");
   // Remove any previous not-food notification
@@ -517,6 +505,9 @@ function showNotFoodNotification(confidence) {
 function showResults(data) {
   spinnerContainer.classList.add("hidden");
   resultCard.classList.remove("hidden");
+
+  // Record confidence for the save-meal upload flow
+  window.__foodImageConfidence = data.confidence || null;
 
   // Main prediction
   const label = data.prediction;
@@ -849,10 +840,6 @@ btnCorrect.addEventListener("click", () => {
   confirmationChoices.classList.add("hidden");
   btnSaveMeal.classList.remove("hidden");
   showNutritionCard(predictionData.prediction, predictionData.nutrition);
-  // Only show legacy metaForm if NOT authenticated
-  if (!window.__supabase) {
-    showMetaForm(predictionData.prediction);
-  }
 });
 
 // ── "Incorrect" button ──────────────────────────────────────────────────
@@ -994,74 +981,12 @@ correctionForm.classList.add("hidden");
   resultFood.textContent = capitalize(corrected);
   resultIcon.textContent = getFoodEmoji(selectedFoodKey || corrected);
   showNutritionCard(selectedFoodKey || corrected);
-  // Only show legacy metaForm if NOT authenticated
-  if (!window.__supabase) {
-    showMetaForm(corrected);
-  }
 });
-
-// ── Show metadata form ──────────────────────────────────────────────────
-function showMetaForm(label) {
-  finalLabel.value = label;
-  metaForm.classList.remove("hidden");
-  metaForm.scrollIntoView({ behavior: "smooth", block: "center" });
-}
-
-// ── Submit metadata + image to /confirm ─────────────────────────────────
-metadataForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const label = finalLabel.value;
-  if (!currentFile) {
-    showError("No image file available. Please re-upload.");
-    return;
-  }
-
-  btnSave.disabled = true;
-  btnSave.textContent = "⏳ Saving...";
-
-  const formData = new FormData();
-  formData.append("file", currentFile);
-  formData.append("label", label);
-  formData.append("email", metaEmail.value.trim());
-  formData.append("country", metaCountry.value.trim());
-  formData.append("source", "web-app");
-
-  try {
-    const response = await fetch("/confirm", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || `Server error: ${response.status}`);
-    }
-
-    const result = await response.json();
-    showSuccess();
-  } catch (err) {
-    showError(err.message);
-    btnSave.disabled = false;
-    btnSave.textContent = "💾 Save to Database";
-  }
-});
-
-// ── Show success state ──────────────────────────────────────────────────
-function showSuccess() {
-  metaForm.classList.add("hidden");
-  resultCard.classList.add("hidden");
-  nutritionCard.classList.add("hidden");
-  successState.classList.remove("hidden");
-  successState.scrollIntoView({ behavior: "smooth", block: "center" });
-}
 
 // ── "Upload Another" button ─────────────────────────────────────────────
 btnNewUpload.addEventListener("click", () => {
   resetUI();
   fileInput.value = "";
-  metaEmail.value = "";
-  metaCountry.value = "";
   uploadZone.scrollIntoView({ behavior: "smooth", block: "center" });
 });
 

@@ -123,16 +123,16 @@ Place your Google Cloud service account JSON files in `config/`:
 # Development (uses test resources)
 set TEST_NUTRIFY_ENV_VAR=True
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-cloudflared tunnel --url http://localhost:8000
+npx --yes localtunnel --port 8000
 
 # Production
 set TEST_NUTRIFY_ENV_VAR=False
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-cloudflared tunnel --url http://localhost:8000
+npx --yes localtunnel --port 8000
 
 # Run Sever
 local URL : http://localhost:8000
-mobile URL : https://talented-speed-faq-gene.trycloudflare.com/app#/dashboard
+mobile URL : https://icy-parrots-unite.loca.lt
 ```
 <!--
 ### 4. Open the App
