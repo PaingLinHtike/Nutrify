@@ -14,7 +14,7 @@
 ## ✨ Features
 
 - 🔍 **Food Detection** — Binary classifier distinguishes food from non-food images before classification
-- 🧠 **10-Class Classification** — Identifies apple, banana, beef, blueberries, carrots, chicken wings, egg, honey, mushrooms, strawberries
+- 🧠 **100-Class Classification** — Identifies 100 whole-food classes from the project dataset
 - 🥗 **Nutrition Info** — Returns protein, fat, carbs, and calorie data per food
 - 💚 **Health Score** — Computes a 0–10 health rating based on nutritional rules
 - 📤 **Image Storage** — Uploads confirmed images to Google Cloud Storage
@@ -30,7 +30,7 @@ flowchart LR
     A[User Uploads Image] --> B[FastAPI Backend]
     B --> C{Food Detector<br/>224×224}
     C -->|Not Food| D[❌ Reject — HTTP 400]
-    C -->|Is Food| E[10-Class Classifier<br/>380×380]
+    C -->|Is Food| E[100-Class Classifier<br/>380×380]
     E --> F[Nutrition Lookup]
     F --> G[Return Prediction<br/>+ Nutrition + Health Score]
     G --> H{User Confirms?}
@@ -79,7 +79,7 @@ Nutrify/
 ├── image_uploader.py            # GCS client factory
 ├── google_credentials.py        # Credential loader
 ├── model/                       # 🧠 Trained models
-│   ├── food-10-version.keras
+│   ├── food-100-version.keras
 │   └── food_or_not_food_detector_v2.keras
 ├── data/                        # 📦 Raw dataset
 ├── data_exploration/            # 📊 USDA analysis + nutrition CSV
@@ -212,13 +212,15 @@ Store a confirmed prediction to cloud storage and sheets.
 | Output    | Sigmoid (0 = not food, 1 = food)        |
 | Threshold | 0.5                                     |
 
-### 10-Class Food Classifier
+### 100-Class Food Classifier
 
 | Property | Value                                                                                         |
 | -------- | --------------------------------------------------------------------------------------------- |
-| File     | `model/food-10-version.keras`                                                                 |
+| File     | `model/food-100-version.keras`                                                                |
 | Input    | 380 × 380 × 3 RGB                                                                             |
-| Classes  | apple, banana, beef, blueberries, carrots, chicken_wings, egg, honey, mushrooms, strawberries |
+| Classes  | 100 food folders from `data/100_foods`, sorted by name                                        |
+
+The full `.keras` export must be present at the path above. If it is missing or damaged, the web app still starts, but `POST /predict` returns HTTP 503 until the model is replaced.
 
 ---
 
