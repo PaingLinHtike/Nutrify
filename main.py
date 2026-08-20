@@ -20,18 +20,164 @@ from PIL import Image
 app = FastAPI(title="VitaVision API")
 logger = logging.getLogger(__name__)
 
+CLASSIFIER_CLASS_NAMES = [
+    "almonds",
+    "apple",
+    "apricot_fruit",
+    "asparagus",
+    "avocado",
+    "bacon",
+    "bagel",
+    "banana",
+    "beef_meat",
+    "beetroot",
+    "bell_pepper",
+    "black_beans",
+    "blackberries",
+    "blueberries",
+    "bread",
+    "broccoli",
+    "brown_rice",
+    "butter",
+    "cabbage",
+    "cantaloupe_melon",
+    "carrots",
+    "cashews",
+    "cauliflower",
+    "celery",
+    "cheddar_cheese",
+    "cherries",
+    "chia_seeds",
+    "chicken_breast",
+    "chicken_thigh",
+    "chicken_wings",
+    "chickpeas",
+    "coconut",
+    "cod_fish",
+    "corn",
+    "crab",
+    "cucumber",
+    "dates_fruit",
+    "duck_breast",
+    "egg",
+    "eggplant",
+    "figs_fruit",
+    "garlic",
+    "grapefruit",
+    "grapes",
+    "green_beans",
+    "ham",
+    "honey",
+    "kidney_beans",
+    "kiwi_fruit",
+    "lamb_chop",
+    "lentils",
+    "lettuce",
+    "lobster",
+    "mango_fruit",
+    "milk",
+    "mozzarella_cheese",
+    "mushrooms",
+    "noodles",
+    "oats",
+    "onion",
+    "orange_fruit",
+    "papaya_fruit",
+    "pasta",
+    "peach_fruit",
+    "peanut_butter",
+    "peanuts",
+    "pear_fruit",
+    "peas",
+    "pineapple",
+    "pistachios",
+    "plum_fruit",
+    "pomegranate",
+    "popcorn",
+    "pork_chop",
+    "potato",
+    "pumpkin",
+    "pumpkin_seeds",
+    "radish",
+    "raspberries",
+    "rice",
+    "salmon_fish",
+    "sardines",
+    "sesame_seeds",
+    "shrimp",
+    "soybeans",
+    "spinach",
+    "squid",
+    "strawberries",
+    "sunflower_seeds",
+    "sweet_potato",
+    "tilapia_fish",
+    "tofu",
+    "tomato",
+    "tuna_fish",
+    "turkey_breast",
+    "turnip",
+    "walnuts",
+    "watermelon",
+    "yogurt",
+    "zucchini",
+]
+
+REALTIME_CLASS_NAMES = [
+    "apple",
+    "banana",
+    "beef_meat",
+    "blueberries",
+    "carrots",
+    "chicken_wings",
+    "egg",
+    "honey",
+    "mushrooms",
+    "strawberries",
+]
+
+NUTRITION_NAME_ALIASES = {
+    "apricot_fruit": "apricot",
+    "beef_meat": "beef",
+    "cantaloupe_melon": "cantaloupe",
+    "cod_fish": "cod",
+    "dates_fruit": "dates",
+    "figs_fruit": "figs",
+    "kiwi_fruit": "kiwi",
+    "mango_fruit": "mango",
+    "orange_fruit": "orange",
+    "papaya_fruit": "papaya",
+    "peach_fruit": "peach",
+    "pear_fruit": "pear",
+    "plum_fruit": "plum",
+    "salmon_fish": "salmon",
+    "tilapia_fish": "tilapia",
+    "tuna_fish": "tuna",
+}
+
 
 # ── Helper: load models with potential config issues ──────────────────
 def load_keras_model(path: Path):
     """Load a .keras model, fixing common Keras version incompatibilities."""
+    if not path.is_file():
+        raise RuntimeError(f"Model file not found: {path}")
+
+    original_error = None
     try:
         return tf.keras.models.load_model(str(path), compile=False)
-    except Exception:
-        pass  # fall through to the fix-up path
+    except Exception as error:
+        original_error = error
+
+    try:
+        archive = zipfile.ZipFile(str(path), "r")
+    except zipfile.BadZipFile as error:
+        raise RuntimeError(f"Model file is damaged or incomplete: {path}. Replace it with the full exported .keras file.") from error
 
     # Fix: remove quantization_config from the saved config
     dst = os.path.join(tempfile.gettempdir(), f"_fixed_{path.name}")
-    with zipfile.ZipFile(str(path), "r") as zin:
+    with archive as zin:
+        if "config.json" not in zin.namelist():
+            raise RuntimeError(f"Model file has no config.json: {path}") from original_error
         config = json.loads(zin.read("config.json"))
 
         def _clean(obj):
@@ -56,43 +202,48 @@ def load_keras_model(path: Path):
     return model
 
 
-# ── Load the food-10 classifier model ──────────────────────────────────
-MODEL_PATH = Path("model/food-10-version.keras")
-model = load_keras_model(MODEL_PATH)
-print(f"✅ Loaded food-10 classifier from {MODEL_PATH}")
+# ── Load the 100-food classifier model ─────────────────────────────────
+MODEL_PATH = Path("model/food-100-version.keras")
+model = None
+classifier_error = None
+try:
+    model = load_keras_model(MODEL_PATH)
+    if model.output_shape[-1] != len(CLASSIFIER_CLASS_NAMES):
+        raise RuntimeError(f"Classifier has {model.output_shape[-1]} outputs, but {len(CLASSIFIER_CLASS_NAMES)} class names are configured.")
+    print(f"Loaded 100-food classifier from {MODEL_PATH}")
+except RuntimeError as error:
+    classifier_error = str(error)
+    logger.error(classifier_error)
 
 # ── Load the food / not-food detector model ────────────────────────────
 FOOD_DETECTOR_PATH = Path("model/food_or_not_food_detector_v2.keras")
 food_detector = load_keras_model(FOOD_DETECTOR_PATH)
 FOOD_DETECTOR_SIZE = 224  # input size for the food detector
 FOOD_DETECTOR_THRESHOLD = 0.5  # confidence threshold for "food"
-print(f"✅ Loaded food/not-food detector from {FOOD_DETECTOR_PATH}")
+print(f"Loaded food/not-food detector from {FOOD_DETECTOR_PATH}")
 
 # The browser camera uses the ONNX export of this .pt checkpoint. ONNX Runtime
 # keeps continuous frame inference lightweight and uses the exact trained weights.
 REALTIME_MODEL_SOURCE_PATH = Path("model/realtime_food_recognition.pt")
 REALTIME_MODEL_PATH = Path("model/realtime_food_recognition.onnx")
+REALTIME_CLASS_NAMES_PATH = Path("model/realtime_food_classes.txt")
+if REALTIME_CLASS_NAMES_PATH.exists():
+    exported_class_names = [name.strip() for name in REALTIME_CLASS_NAMES_PATH.read_text(encoding="utf-8").splitlines() if name.strip()]
+    if exported_class_names:
+        REALTIME_CLASS_NAMES = exported_class_names
+
 realtime_session = None
 if REALTIME_MODEL_SOURCE_PATH.exists() and REALTIME_MODEL_PATH.exists():
     available_providers = ort.get_available_providers()
     providers = [provider for provider in ("CUDAExecutionProvider", "CPUExecutionProvider") if provider in available_providers]
     realtime_session = ort.InferenceSession(str(REALTIME_MODEL_PATH), providers=providers)
-    print(f"✅ Loaded real-time recognition model exported from " f"{REALTIME_MODEL_SOURCE_PATH} | providers: {providers}")
+    realtime_output_count = realtime_session.get_outputs()[0].shape[-1]
+    if isinstance(realtime_output_count, int) and realtime_output_count != len(REALTIME_CLASS_NAMES):
+        raise RuntimeError(f"Real-time model has {realtime_output_count} outputs, but {len(REALTIME_CLASS_NAMES)} class names are configured.")
+    print(f"Loaded real-time recognition model exported from " f"{REALTIME_MODEL_SOURCE_PATH} | providers: {providers}")
 else:
-    print(f"⚠️ Real-time model unavailable; expected " f"{REALTIME_MODEL_SOURCE_PATH} and {REALTIME_MODEL_PATH}")
+    print(f"Real-time model unavailable; expected " f"{REALTIME_MODEL_SOURCE_PATH} and {REALTIME_MODEL_PATH}")
 
-CLASS_NAMES = [
-    "apple",
-    "banana",
-    "beef",
-    "blueberries",
-    "carrots",
-    "chicken_wings",
-    "egg",
-    "honey",
-    "mushrooms",
-    "strawberries",
-]
 IMG_SIZE = 380  # model input size
 
 # ── Load nutrition data ─────────────────────────────────────────────────
@@ -161,9 +312,9 @@ if NUTRITION_CSV.exists():
                 "calories": calories,
                 "health_score": health_score,
             }
-    print(f"✅ Loaded nutrition data for {len(NUTRITION_DATA)} foods")
+    print(f"Loaded nutrition data for {len(NUTRITION_DATA)} foods")
 else:
-    print(f"⚠️  Nutrition CSV not found at {NUTRITION_CSV}")
+    print(f"Nutrition CSV not found at {NUTRITION_CSV}")
 
 
 # ── Serve the frontend ──────────────────────────────────────────────────
@@ -192,6 +343,12 @@ app.mount("/static", StaticFiles(directory="frontend"), name="static")
 @app.post("/predict")
 async def predict_food(file: UploadFile = File(...)):
     """Receive an image, detect if it's food, then classify if it is."""
+    if model is None:
+        return JSONResponse(
+            status_code=503,
+            content={"error": classifier_error or "100-food classifier is unavailable"},
+        )
+
     contents = await file.read()
 
     # Save uploaded bytes to a temporary file
@@ -236,12 +393,12 @@ async def predict_food(file: UploadFile = File(...)):
         predictions = model.predict(input_arr, verbose=0)
 
         predicted_index = int(np.argmax(predictions))
-        predicted_food = CLASS_NAMES[predicted_index]
+        predicted_food = CLASSIFIER_CLASS_NAMES[predicted_index]
         confidence = float(predictions[0][predicted_index])
 
         # ── Top-3 predictions ──
         top_indices = np.argsort(predictions[0])[-3:][::-1]
-        top_predictions = [{"label": CLASS_NAMES[int(i)], "confidence": float(predictions[0][i])} for i in top_indices]
+        top_predictions = [{"label": CLASSIFIER_CLASS_NAMES[int(i)], "confidence": float(predictions[0][i])} for i in top_indices]
     finally:
         # Clean up the temporary file
         os.unlink(tmp_path)
@@ -256,7 +413,7 @@ async def predict_food(file: UploadFile = File(...)):
         "prediction": predicted_food,
         "confidence": confidence,
         "top_predictions": top_predictions,
-        "nutrition": NUTRITION_DATA.get(predicted_food),
+        "nutrition": NUTRITION_DATA.get(NUTRITION_NAME_ALIASES.get(predicted_food, predicted_food)),
         "image_width": width,
         "image_height": height,
     }
@@ -308,12 +465,12 @@ async def predict_camera_frame(file: UploadFile = File(...)):
             probabilities = exponentials / exponentials.sum()
 
         predicted_index = int(np.argmax(probabilities))
-        predicted_food = CLASS_NAMES[predicted_index]
+        predicted_food = REALTIME_CLASS_NAMES[predicted_index]
         confidence = float(probabilities[predicted_index])
         top_indices = np.argsort(probabilities)[-3:][::-1]
         top_predictions = [
             {
-                "label": CLASS_NAMES[int(index)],
+                "label": REALTIME_CLASS_NAMES[int(index)],
                 "confidence": float(probabilities[index]),
             }
             for index in top_indices
@@ -325,7 +482,7 @@ async def predict_camera_frame(file: UploadFile = File(...)):
             "prediction": predicted_food,
             "confidence": confidence,
             "top_predictions": top_predictions,
-            "nutrition": NUTRITION_DATA.get(predicted_food),
+            "nutrition": NUTRITION_DATA.get(NUTRITION_NAME_ALIASES.get(predicted_food, predicted_food)),
             "image_width": image.width,
             "image_height": image.height,
             "recognition_model": REALTIME_MODEL_SOURCE_PATH.name,

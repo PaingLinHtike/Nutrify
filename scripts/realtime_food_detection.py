@@ -31,6 +31,7 @@ except ImportError:
 
 # ── Config ──────────────────────────────────────────────────────────────
 MODEL_PATH = Path(__file__).resolve().parents[1] / "model" / "realtime_food_recognition.onnx"
+CLASS_NAMES_PATH = Path(__file__).resolve().parents[1] / "model" / "realtime_food_classes.txt"
 IMGSZ = 224  # the model was trained/exported at 224x224
 
 # Class order from training (folder names sorted alphabetically in the
@@ -49,6 +50,11 @@ CLASS_NAMES = [
 ]
 DISPLAY_NAMES = {"beef_meat": "beef"}
 
+if CLASS_NAMES_PATH.exists():
+    exported_class_names = [name.strip() for name in CLASS_NAMES_PATH.read_text(encoding="utf-8").splitlines() if name.strip()]
+    if exported_class_names:
+        CLASS_NAMES = exported_class_names
+
 SAMPLE_DIR = Path(__file__).resolve().parents[1] / "sample_food_images"
 
 
@@ -59,8 +65,12 @@ def load_session(model_path: Path) -> ort.InferenceSession:
     providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
     available = ort.get_available_providers()
     providers = [p for p in providers if p in available]
-    print(f"Loaded: {model_path}  |  providers: {providers}")
-    return ort.InferenceSession(str(model_path), providers=providers)
+    session = ort.InferenceSession(str(model_path), providers=providers)
+    output_count = session.get_outputs()[0].shape[-1]
+    if isinstance(output_count, int) and output_count != len(CLASS_NAMES):
+        sys.exit(f"Model has {output_count} outputs, but {len(CLASS_NAMES)} class names are configured. " f"Copy the matching {CLASS_NAMES_PATH.name} file into model/.")
+    print(f"Loaded: {model_path}  |  classes: {len(CLASS_NAMES)}  |  providers: {providers}")
+    return session
 
 
 def preprocess(frame_bgr: np.ndarray) -> np.ndarray:
@@ -76,7 +86,7 @@ def predict(session, frame_bgr: np.ndarray):
     """Run inference and return (label, confidence, scores)."""
     tensor = preprocess(frame_bgr)
     input_name = session.get_inputs()[0].name
-    scores = session.run(None, {input_name: tensor})[0][0]  # Softmax probabilities [10]
+    scores = session.run(None, {input_name: tensor})[0][0]
     top_idx = int(np.argmax(scores))
     return CLASS_NAMES[top_idx], float(scores[top_idx]), scores
 
