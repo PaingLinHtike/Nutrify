@@ -30,24 +30,12 @@ except ImportError:
     sys.exit("onnxruntime is not installed.\n" "Run:  pip install onnxruntime opencv-python numpy")
 
 # ── Config ──────────────────────────────────────────────────────────────
-MODEL_PATH = Path(__file__).resolve().parents[1] / "model" / "realtime_food_recognition.onnx"
-CLASS_NAMES_PATH = Path(__file__).resolve().parents[1] / "model" / "realtime_food_classes.txt"
+MODEL_PATH = Path(__file__).resolve().parents[1] / "model" / "realtime_food_recognition_100_foods.onnx"
+CLASS_NAMES_PATH = Path(__file__).resolve().parents[1] / "model" / "realtime_food_recognition_100_foods_classes.txt"
 IMGSZ = 224  # the model was trained/exported at 224x224
 
-# Class order from training (folder names sorted alphabetically in the
-# training notebook's YAML). beef_meat is displayed as "beef" in the app.
-CLASS_NAMES = [
-    "apple",
-    "banana",
-    "beef_meat",
-    "blueberries",
-    "carrots",
-    "chicken_wings",
-    "egg",
-    "honey",
-    "mushrooms",
-    "strawberries",
-]
+# Class order from training (folder names sorted alphabetically).
+CLASS_NAMES = []
 DISPLAY_NAMES = {"beef_meat": "beef"}
 
 if CLASS_NAMES_PATH.exists():
@@ -61,7 +49,9 @@ SAMPLE_DIR = Path(__file__).resolve().parents[1] / "sample_food_images"
 # ── Model ───────────────────────────────────────────────────────────────
 def load_session(model_path: Path) -> ort.InferenceSession:
     if not model_path.exists():
-        sys.exit(f"Model not found: {model_path}\nExport realtime_food_recognition.pt to ONNX first.")
+        sys.exit(f"Model not found: {model_path}")
+    if not CLASS_NAMES:
+        sys.exit(f"Class-name file not found or empty: {CLASS_NAMES_PATH}")
     providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
     available = ort.get_available_providers()
     providers = [p for p in providers if p in available]

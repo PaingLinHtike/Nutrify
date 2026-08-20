@@ -123,18 +123,7 @@ CLASSIFIER_CLASS_NAMES = [
     "zucchini",
 ]
 
-REALTIME_CLASS_NAMES = [
-    "apple",
-    "banana",
-    "beef_meat",
-    "blueberries",
-    "carrots",
-    "chicken_wings",
-    "egg",
-    "honey",
-    "mushrooms",
-    "strawberries",
-]
+REALTIME_CLASS_NAMES = CLASSIFIER_CLASS_NAMES.copy()
 
 NUTRITION_NAME_ALIASES = {
     "apricot_fruit": "apricot",
@@ -224,9 +213,9 @@ print(f"Loaded food/not-food detector from {FOOD_DETECTOR_PATH}")
 
 # The browser camera uses the ONNX export of this .pt checkpoint. ONNX Runtime
 # keeps continuous frame inference lightweight and uses the exact trained weights.
-REALTIME_MODEL_SOURCE_PATH = Path("model/realtime_food_recognition.pt")
-REALTIME_MODEL_PATH = Path("model/realtime_food_recognition.onnx")
-REALTIME_CLASS_NAMES_PATH = Path("model/realtime_food_classes.txt")
+REALTIME_MODEL_SOURCE_PATH = Path("model/realtime_food_recognition_100_foods.pt")
+REALTIME_MODEL_PATH = Path("model/realtime_food_recognition_100_foods.onnx")
+REALTIME_CLASS_NAMES_PATH = Path("model/realtime_food_recognition_100_foods_classes.txt")
 if REALTIME_CLASS_NAMES_PATH.exists():
     exported_class_names = [name.strip() for name in REALTIME_CLASS_NAMES_PATH.read_text(encoding="utf-8").splitlines() if name.strip()]
     if exported_class_names:
