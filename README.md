@@ -80,7 +80,7 @@ Nutrify/
 ├── google_credentials.py        # Credential loader
 ├── model/                       # 🧠 Trained models
 │   ├── food-10-version.keras
-│   └── food_or_not_food_detector.keras
+│   └── food_or_not_food_detector_v2.keras
 ├── data/                        # 📦 Raw dataset
 ├── data_exploration/            # 📊 USDA analysis + nutrition CSV
 ├── 10_whole_foods/              # 🏋️ Train/test split
@@ -122,16 +122,22 @@ Place your Google Cloud service account JSON files in `config/`:
 ```bash
 # Development (uses test resources)
 set TEST_NUTRIFY_ENV_VAR=True
-uvicorn main:app --host 0.0.0.0 --port 8000
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+npx --yes localtunnel --port 8000
 
 # Production
 set TEST_NUTRIFY_ENV_VAR=False
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+npx --yes localtunnel --port 8000
 
+# Run Sever
+local URL : http://localhost:8000
+mobile URL : https://icy-parrots-unite.loca.lt
+```
+<!--
 ### 4. Open the App
 
-Visit **[http://localhost:8000](http://localhost:8000)** in your browser.
+Visit **[http://localhost:8000](http://localhost:8000)** in your browser. -->
 
 ---
 
@@ -201,7 +207,7 @@ Store a confirmed prediction to cloud storage and sheets.
 
 | Property  | Value                                   |
 | --------- | --------------------------------------- |
-| File      | `model/food_or_not_food_detector.keras` |
+| File      | `model/food_or_not_food_detector_v2.keras` |
 | Input     | 224 × 224 × 3 RGB                       |
 | Output    | Sigmoid (0 = not food, 1 = food)        |
 | Threshold | 0.5                                     |

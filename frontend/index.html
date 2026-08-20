@@ -4,7 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VitaVision | AI Food Recognition</title>
-    <link rel="stylesheet" href="static/styles.css" />
+    <link rel="icon" type="image/png" href="/static/logo.png" />
+    <script>
+      // Apply saved theme before CSS loads to avoid a flash
+      (function () {
+        try {
+          var saved = localStorage.getItem("nutrify-theme");
+          var dark = saved
+            ? saved === "dark"
+            : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.setAttribute(
+            "data-theme",
+            dark ? "dark" : "light",
+          );
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="/static/styles.css?v=20260816c" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
@@ -12,258 +30,1214 @@
   </head>
 
   <body>
-    <!-- ═══ Navigation ═══ -->
-    <nav class="navbar">
-      <div class="nav-container">
-        <a href="/" class="nav-logo">
-          <span class="logo-icon">🍔</span>
+    <!-- ═══ Auth Guard — redirect to /auth if not signed in ═══ -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script>
+      (function () {
+        var SUPABASE_URL = "https://idcwtdasaglfqaefojbd.supabase.co";
+        var SUPABASE_ANON_KEY =
+          "sb_publishable_CoUgdv_3fBdLMT_5kJGs8Q__CgZjgh2";
+        var supabase = window.supabase.createClient(
+          SUPABASE_URL,
+          SUPABASE_ANON_KEY,
+        );
+        window.__supabase = supabase;
+
+        supabase.auth.getSession().then(function (res) {
+          if (!res.data.session) {
+            window.location.replace("/auth");
+            return;
+          }
+          document.body.classList.add("authenticated");
+          function revealAuthUI() {
+            var userEl = document.getElementById("navUser");
+            if (userEl) {
+              userEl.textContent = res.data.session.user.email;
+              userEl.classList.remove("hidden");
+            }
+            var signOutEl = document.getElementById("navSignOut");
+            if (signOutEl) signOutEl.classList.remove("hidden");
+          }
+          if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", revealAuthUI);
+          } else {
+            revealAuthUI();
+          }
+        });
+      })();
+    </script>
+
+    <!-- ═══ Dark mode toggle ═══ -->
+    <script>
+      (function () {
+        function apply(dark) {
+          document.documentElement.setAttribute(
+            "data-theme",
+            dark ? "dark" : "light",
+          );
+          try {
+            localStorage.setItem("nutrify-theme", dark ? "dark" : "light");
+          } catch (e) {}
+          var icon = document.getElementById("themeIcon");
+          var label = document.getElementById("themeLabel");
+          if (icon) icon.textContent = dark ? "☀️" : "🌙";
+          if (label) label.textContent = dark ? "Light Mode" : "Dark Mode";
+          // Re-render views so charts pick up the new theme colors
+          window.dispatchEvent(new Event("hashchange"));
+        }
+
+        // Wait until the sidebar (with the toggle button) is in the DOM
+        document.addEventListener("DOMContentLoaded", function () {
+          var btn = document.getElementById("btnToggleTheme");
+          if (!btn) return;
+          btn.addEventListener("click", function () {
+            var isDark =
+              document.documentElement.getAttribute("data-theme") === "dark";
+            apply(!isDark);
+          });
+          apply(document.documentElement.getAttribute("data-theme") === "dark");
+        });
+      })();
+    </script>
+
+    <!-- ═══ Mobile nav bar toggle ═══ -->
+    <script>
+      (function () {
+        document.addEventListener("DOMContentLoaded", function () {
+          var btn = document.getElementById("btnNavToggle");
+          var sidebar = document.querySelector(".sidebar");
+          if (!btn || !sidebar) return;
+
+          btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var open = sidebar.classList.toggle("nav-open");
+            btn.setAttribute("aria-expanded", open ? "true" : "false");
+          });
+
+          // Close when a nav item is chosen or the page changes
+          window.addEventListener("hashchange", function () {
+            sidebar.classList.remove("nav-open");
+            btn.setAttribute("aria-expanded", "false");
+          });
+
+          // Close when tapping outside the menu
+          document.addEventListener("click", function (e) {
+            if (!sidebar.classList.contains("nav-open")) return;
+            if (!sidebar.contains(e.target)) {
+              sidebar.classList.remove("nav-open");
+              btn.setAttribute("aria-expanded", "false");
+            }
+          });
+
+          // Reset when going back to desktop size
+          window.addEventListener("resize", function () {
+            if (window.innerWidth > 768) {
+              sidebar.classList.remove("nav-open");
+              btn.setAttribute("aria-expanded", "false");
+            }
+          });
+        });
+      })();
+    </script>
+
+    <!-- ═══ App Layout ═══ -->
+    <div class="app-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <a href="#/dashboard" class="sidebar-logo">
+          <img src="/static/logo.png" alt="VitaVision" class="logo-icon" />
           <span class="logo-text"
             >Vita<span class="logo-accent">Vision</span></span
           >
         </a>
-        <div class="nav-tagline">AI-Powered Food Intelligence</div>
-      </div>
-    </nav>
+        <button
+          type="button"
+          class="nav-toggle"
+          id="btnNavToggle"
+          aria-label="Toggle menu"
+          aria-expanded="false"
+        >
+          <span></span><span></span><span></span>
+        </button>
+        <div class="sidebar-menu">
+          <nav class="sidebar-nav">
+            <p class="nav-section-title">Main Menu</p>
+            <a href="#/dashboard" class="nav-item active" data-view="dashboard">
+              <span class="nav-icon">🏠</span
+              ><span class="nav-label">Dashboard</span>
+            </a>
+            <a href="#/log-meal" class="nav-item" data-view="log-meal">
+              <span class="nav-icon">📸</span
+              ><span class="nav-label">Log Meal</span>
+            </a>
+            <a href="#/history" class="nav-item" data-view="history">
+              <span class="nav-icon">📅</span
+              ><span class="nav-label">History</span>
+            </a>
+            <a href="#/statistics" class="nav-item" data-view="statistics">
+              <span class="nav-icon">📊</span
+              ><span class="nav-label">Statistics</span>
+            </a>
+            <a href="#/profile" class="nav-item" data-view="profile">
+              <span class="nav-icon">👤</span
+              ><span class="nav-label">Profile</span>
+            </a>
+            <button
+              type="button"
+              class="nav-item nav-signout hidden"
+              id="navSignOut"
+              onclick="
+                window.__supabase.auth.signOut().then(function () {
+                  window.location.replace('/auth');
+                })
+              "
+            >
+              <span class="nav-icon">🚪</span
+              ><span class="nav-label">Log Out</span>
+            </button>
 
-    <!-- ═══ Main App ═══ -->
-    <main class="app-main">
-      <div class="container">
-        <!-- Header -->
-        <div class="app-header">
-          <h1>Discover Your Food <span>With AI</span></h1>
-          <p>
-            Upload a food photo and let our AI identify it. Confirm or correct
-            the result to help us improve — every submission adds to the world's
-            largest food database!
-          </p>
-        </div>
+            <p class="nav-section-title">Preference</p>
+            <button
+              type="button"
+              class="nav-item theme-toggle"
+              id="btnToggleTheme"
+            >
+              <span class="nav-icon" id="themeIcon">🌙</span
+              ><span class="nav-label" id="themeLabel">Dark Mode</span>
+            </button>
 
-        <!-- ═══ Upload Zone ═══ -->
-        <div class="upload-zone" id="uploadZone">
-          <div class="upload-content" id="uploadContent">
-            <div class="upload-icon">📸</div>
-            <h3>Upload a Food Image</h3>
-            <p class="upload-hint">Click to browse or drag &amp; drop</p>
-            <p class="upload-formats">Supports JPG, JPEG, PNG · Max 200 MB</p>
-            <input type="file" id="fileInput" accept=".jpg,.jpeg,.png" hidden />
+            <!-- Fills remaining sidebar space with a live summary -->
+            <div class="sidebar-summary">
+              <p class="sidebar-summary-title">🔥 Today</p>
+              <div class="sidebar-summary-row">
+                <span>Calories</span><b id="sideCal">— / —</b>
+              </div>
+              <div class="sidebar-summary-row">
+                <span>Water</span><b id="sideWater">0.0 L</b>
+              </div>
+              <div class="sidebar-summary-row">
+                <span>Meals</span><b id="sideMeals">0</b>
+              </div>
+            </div>
+          </nav>
+          <div class="sidebar-footer">
+            <span id="navUser" class="sidebar-user hidden"></span>
           </div>
-          <div class="upload-preview hidden" id="uploadPreview">
-            <img id="previewImage" alt="Preview" />
-            <button class="btn-remove" id="btnRemove" title="Remove image">
+        </div>
+      </aside>
+
+      <!-- Main content -->
+      <main class="main-content">
+        <section class="view" id="view-log-meal">
+          <!-- ═══ Main App ═══ -->
+          <div class="container">
+            <!-- Header -->
+            <div class="app-header">
+              <h1>Discover Your Food <span>With AI</span></h1>
+              <p>
+                Upload a food photo and let our AI identify it. Confirm or
+                correct the result to help us improve — every submission adds to
+                the world's largest food database!
+              </p>
+            </div>
+
+            <!-- ═══ Upload Zone ═══ -->
+            <div class="upload-zone" id="uploadZone">
+              <div class="upload-content" id="uploadContent">
+                <div class="upload-icon">📸</div>
+                <h3>Upload a Food Image</h3>
+                <p class="upload-hint">Click to browse or drag &amp; drop</p>
+                <p class="upload-formats">
+                  Supports JPG, JPEG, PNG · Max 200 MB
+                </p>
+                <input
+                  type="file"
+                  id="fileInput"
+                  class="file-input-hidden"
+                  accept=".jpg,.jpeg,.png"
+                />
+                <div class="upload-buttons">
+                  <label
+                    for="fileInput"
+                    class="btn btn-gallery"
+                    id="btnGallery"
+                  >
+                    🖼️ Gallery
+                  </label>
+                  <button type="button" class="btn btn-camera" id="btnCamera">
+                    📷 Camera
+                  </button>
+                </div>
+              </div>
+              <div class="upload-preview hidden" id="uploadPreview">
+                <img id="previewImage" alt="Preview" />
+                <button class="btn-remove" id="btnRemove" title="Remove image">
+                  ✕
+                </button>
+              </div>
+              <div class="scan-overlay hidden" id="scanOverlay">
+                <div class="scan-line"></div>
+                <p class="scan-text">🔍 Scanning food...</p>
+              </div>
+            </div>
+
+            <section class="supported-foods" aria-labelledby="supportedFoodsTitle">
+              <div class="supported-foods-heading">
+                <span class="supported-foods-icon">&#10024;</span>
+                <div>
+                  <h3 id="supportedFoodsTitle">Foods Our AI Recognizes</h3>
+                  <p>Scan or upload one of these 10 supported foods.</p>
+                </div>
+              </div>
+              <ul class="supported-foods-list">
+                <li>🍗 Chicken Wings</li>
+                <li>🍎 Apple</li>
+                <li>🍌 Banana</li>
+                <li>🥩 Beef</li>
+                <li>🥕 Carrots</li>
+                <li>🥚 Egg</li>
+                <li>🍓 Strawberries</li>
+                <li>🫐 Blueberries</li>
+                <li>🍄 Mushrooms</li>
+                <li>🍯 Honey</li>
+              </ul>
+            </section>
+
+            <!-- ═══ Spinner ═══ -->
+            <div class="spinner-container hidden" id="spinnerContainer">
+              <div class="spinner"></div>
+              <p class="spinner-text">
+                VitaVision AI is analyzing your food...
+              </p>
+            </div>
+
+            <!-- ═══ Result Card ═══ -->
+            <div class="result-card hidden" id="resultCard">
+              <div class="result-header">
+                <span class="result-badge">AI Analysis Complete</span>
+              </div>
+
+              <div class="result-main">
+                <div class="result-icon" id="resultIcon">🍕</div>
+                <div class="result-details">
+                  <h2 class="result-food" id="resultFood">—</h2>
+                  <div class="confidence-bar-container">
+                    <div class="confidence-label">
+                      <span>Confidence</span>
+                      <span id="confidenceText">0%</span>
+                    </div>
+                    <div class="confidence-track">
+                      <div class="confidence-fill" id="confidenceFill"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Top-3 Predictions -->
+              <div class="top-predictions" id="topPredictions">
+                <p class="top-label">Top predictions</p>
+                <div id="topList"></div>
+              </div>
+
+              <!-- ═══ Save Meal + Serving Size ═══ -->
+              <div class="save-meal hidden" id="saveMeal">
+                <p class="save-meal-title">📝 Save this to your meal log</p>
+                <p class="save-meal-help">
+                  Enter the food weight. Nutrition values below update automatically.
+                </p>
+                <div class="save-meal-row">
+                  <label class="meal-log-field">
+                    <span>Meal</span>
+                    <select id="mealType" class="meal-type-select">
+                      <option value="breakfast">🌅 Breakfast</option>
+                      <option value="lunch">☀️ Lunch</option>
+                      <option value="dinner">🌙 Dinner</option>
+                      <option value="snack">🍿 Snack</option>
+                    </select>
+                  </label>
+                  <label class="meal-log-field">
+                    <span>Food weight</span>
+                    <span class="serving-control">
+                      <input
+                        type="number"
+                        id="servingSize"
+                        class="serving-input"
+                        value="100"
+                        min="1"
+                        max="2000"
+                        inputmode="decimal"
+                      />
+                      <span class="serving-unit">g</span>
+                    </span>
+                  </label>
+                </div>
+                <p class="save-meal-note" id="saveMealNote"></p>
+              </div>
+
+              <!-- ═══ Nutrition Card ═══ -->
+              <div class="nutrition-card hidden" id="nutritionCard">
+                <p class="nutrition-serving-title">
+                  Nutrition for <strong id="nutritionServingWeight">100 g</strong>
+                </p>
+                <!-- Calories -->
+                <div class="n-calories">
+                  <div class="n-calories-icon">🔥</div>
+                  <div class="n-calories-number" id="nCalories">—</div>
+                  <div class="n-calories-unit">Calories</div>
+                </div>
+
+                <!-- Macros -->
+                <div class="n-macros">
+                  <div class="n-macro">
+                    <span class="n-macro-bar n-bar-carbs" id="barCarbs"></span>
+                    <span class="n-macro-val" id="nCarbs">—</span>
+                    <span class="n-macro-unit">Carbs</span>
+                  </div>
+                  <div class="n-macro">
+                    <span
+                      class="n-macro-bar n-bar-protein"
+                      id="barProtein"
+                    ></span>
+                    <span class="n-macro-val" id="nProtein">—</span>
+                    <span class="n-macro-unit">Protein</span>
+                  </div>
+                  <div class="n-macro">
+                    <span class="n-macro-bar n-bar-fat" id="barFat"></span>
+                    <span class="n-macro-val" id="nFat">—</span>
+                    <span class="n-macro-unit">Fat</span>
+                  </div>
+                </div>
+
+                <!-- Health Score -->
+                <div class="n-health">
+                  <div class="n-health-top">
+                    <span class="n-health-icon">❤️</span>
+                    <span class="n-health-label">Health Score</span>
+                    <span class="n-health-score" id="nHealthScore">—</span>
+                  </div>
+                  <div class="n-health-track">
+                    <div class="n-health-fill" id="nHealthFill"></div>
+                  </div>
+                  <div class="n-health-ticks">
+                    <span>0</span>
+                    <span>5</span>
+                    <span>10</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Confirmation -->
+              <div class="confirmation">
+                <div id="confirmationChoices">
+                  <p class="confirmation-question">Is this correct?</p>
+                  <div class="confirmation-buttons">
+                    <button class="btn btn-correct" id="btnCorrect">
+                      ✓ Correct
+                    </button>
+                    <button class="btn btn-incorrect" id="btnIncorrect">
+                      ✗ Incorrect
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-save-meal hidden"
+                  id="btnSaveMeal"
+                >
+                  💾 Save Meal
+                </button>
+              </div>
+
+              <!-- Correction Form (hidden initially) -->
+              <div class="correction-form hidden" id="correctionForm">
+                <label for="correctedLabel"
+                  >Select or search the correct food name:</label
+                >
+                <div class="food-search-container">
+                  <div class="food-search-input-wrapper">
+                    <span class="food-search-icon">🔍</span>
+                    <input
+                      type="text"
+                      id="foodSearchInput"
+                      placeholder="Type to search foods..."
+                      autocomplete="off"
+                    />
+                    <button
+                      type="button"
+                      class="food-search-clear hidden"
+                      id="foodSearchClear"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div class="food-dropdown hidden" id="foodDropdown">
+                    <div class="food-dropdown-list" id="foodDropdownList"></div>
+                  </div>
+                  <div class="food-selected-tag hidden" id="foodSelectedTag">
+                    <span id="foodSelectedLabel"></span>
+                    <button
+                      type="button"
+                      class="food-tag-remove"
+                      id="foodTagRemove"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <button
+                    class="btn btn-submit-correct hidden"
+                    id="btnSubmitCorrection"
+                  >
+                    ✓ Confirm Food
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══ Success State ═══ -->
+            <div class="success-state hidden" id="successState">
+              <div class="success-animation">
+                <div class="success-ring">
+                  <svg class="success-svg" viewBox="0 0 80 80">
+                    <circle class="success-circle-bg" cx="40" cy="40" r="34" />
+                    <circle
+                      class="success-circle-fill"
+                      cx="40"
+                      cy="40"
+                      r="34"
+                    />
+                    <polyline
+                      class="success-check"
+                      points="24,42 36,54 56,30"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <h2>Uploaded Successfully! 🎉</h2>
+              <p class="success-message">
+                Your image and nutrition data have been saved to the database.
+                Thank you for contributing to VitaVision!
+              </p>
+              <button class="btn btn-new" id="btnNewUpload">
+                🔄 Upload Another
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ Dashboard View ═══ -->
+        <section class="view active" id="view-dashboard">
+          <div class="container">
+            <h2 class="tracker-title">📊 Today's Progress</h2>
+
+            <!-- Calorie Ring + Stats -->
+            <div class="dash-top">
+              <div class="calorie-ring-wrap">
+                <svg class="calorie-ring" viewBox="0 0 140 140">
+                  <defs>
+                    <linearGradient
+                      id="ringGrad"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="100%"
+                    >
+                      <stop offset="0%" stop-color="#2563eb" />
+                      <stop offset="100%" stop-color="#06b6d4" />
+                    </linearGradient>
+                  </defs>
+                  <circle class="ring-track" cx="70" cy="70" r="60" />
+                  <circle
+                    class="ring-progress"
+                    id="calRing"
+                    cx="70"
+                    cy="70"
+                    r="60"
+                    stroke="url(#ringGrad)"
+                  />
+                </svg>
+                <div class="ring-center">
+                  <span class="ring-value" id="calCurrent">0</span>
+                  <span class="ring-label">kcal</span>
+                  <span class="ring-pct" id="calPct">0%</span>
+                </div>
+              </div>
+
+              <div class="dash-side">
+                <div class="dash-greeting">
+                  <h3 id="greetingText">Good Morning! ☀️</h3>
+                  <p id="greetingDate">Today</p>
+                </div>
+
+                <!-- 4 Separate Stat Boxes -->
+                <div class="dash-grid">
+                  <div class="dash-box">
+                    <div class="dash-box-title">🔥 Calories</div>
+                    <div class="dash-box-value">
+                      <span id="dashCalCurrent">0</span
+                      ><span class="dash-box-unit"
+                        >/ <span id="dashCalGoal">2000</span> kcal</span
+                      >
+                    </div>
+                    <div class="dash-box-pct" id="dashCalPct">0%</div>
+                  </div>
+                  <div class="dash-box">
+                    <div class="dash-box-title">💪 Protein</div>
+                    <div class="dash-box-value">
+                      <span id="dashProCurrent">0</span
+                      ><span class="dash-box-unit"
+                        >/ <span id="dashProGoal">120</span>g</span
+                      >
+                    </div>
+                    <div class="dash-box-pct" id="dashProPct">0%</div>
+                  </div>
+                  <div class="dash-box">
+                    <div class="dash-box-title">🍞 Carbs</div>
+                    <div class="dash-box-value">
+                      <span id="dashCarCurrent">0</span
+                      ><span class="dash-box-unit"
+                        >/ <span id="dashCarGoal">250</span>g</span
+                      >
+                    </div>
+                    <div class="dash-box-pct" id="dashCarPct">0%</div>
+                  </div>
+                  <div class="dash-box">
+                    <div class="dash-box-title">🧈 Fat</div>
+                    <div class="dash-box-value">
+                      <span id="dashFatCurrent">0</span
+                      ><span class="dash-box-unit"
+                        >/ <span id="dashFatGoal">65</span>g</span
+                      >
+                    </div>
+                    <div class="dash-box-pct" id="dashFatPct">0%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Macronutrients -->
+            <div class="macro-bars">
+              <div class="macro-head">
+                <span class="macro-head-title">🥗 Macronutrients</span>
+                <button
+                  class="btn-view-full"
+                  onclick="window.showView('progress')"
+                >
+                  View Full →
+                </button>
+              </div>
+              <div class="macro-row">
+                <span class="macro-icon">💪</span>
+                <span class="macro-name">Protein</span>
+                <div class="macro-track">
+                  <div class="macro-fill protein" id="proBar"></div>
+                </div>
+                <span class="macro-vals"
+                  ><span id="proCurrent">0</span>/<span id="proGoal">120</span
+                  >g</span
+                >
+                <span class="macro-pct" id="proPct">0%</span>
+              </div>
+              <div class="macro-row">
+                <span class="macro-icon">🍞</span>
+                <span class="macro-name">Carbs</span>
+                <div class="macro-track">
+                  <div class="macro-fill carbs" id="carBar"></div>
+                </div>
+                <span class="macro-vals"
+                  ><span id="carCurrent">0</span>/<span id="carGoal">250</span
+                  >g</span
+                >
+                <span class="macro-pct" id="carPct">0%</span>
+              </div>
+              <div class="macro-row">
+                <span class="macro-icon">🧈</span>
+                <span class="macro-name">Fat</span>
+                <div class="macro-track">
+                  <div class="macro-fill fat" id="fatBar"></div>
+                </div>
+                <span class="macro-vals"
+                  ><span id="fatCurrent">0</span>/<span id="fatGoal">65</span
+                  >g</span
+                >
+                <span class="macro-pct" id="fatPct">0%</span>
+              </div>
+            </div>
+
+            <!-- Hydration -->
+            <div class="water-card">
+              <div class="water-header">
+                <span class="water-icon">💧</span>
+                <span class="water-label">Hydration</span>
+                <span class="water-vals"
+                  ><span id="watCurrent">0.0</span>/<span id="watGoal">3.0</span
+                  >L</span
+                >
+                <span class="water-pct" id="watPct">0%</span>
+              </div>
+              <div class="macro-track">
+                <div class="macro-fill water" id="watBar"></div>
+              </div>
+              <p class="water-drops-hint">Tap a drop to add 250ml</p>
+              <div class="water-drops" id="dashWaterDrops"></div>
+            </div>
+
+            <!-- Meal History -->
+            <div class="meal-history" id="mealHistory">
+              <h3>🍽️ Today's Meals</h3>
+              <div class="meal-list" id="mealList">
+                <p class="meal-empty">
+                  No meals logged yet. Upload a food photo to get started!
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ Today's Progress Detail View ═══ -->
+        <section class="view" id="view-progress">
+          <div class="container">
+            <button class="btn-back" onclick="window.showView('dashboard')">
+              ← Back to Dashboard
+            </button>
+            <h2 class="view-title">📊 Today's Progress</h2>
+
+            <!-- Calories Today -->
+            <div class="progress-cal-box">
+              <span class="progress-cal-icon">🔥</span>
+              <div class="progress-cal-info">
+                <span class="progress-cal-label">Calories Today</span>
+                <span class="progress-cal-value"
+                  ><span id="pgCalCurrent">0</span> /
+                  <span id="pgCalGoal">2000</span> kcal</span
+                >
+              </div>
+              <span class="progress-cal-pct" id="pgCalPct">0%</span>
+            </div>
+
+            <!-- Protein / Carbs / Fat boxes -->
+            <div class="progress-grid">
+              <div class="progress-box">
+                <div class="progress-box-icon">💪</div>
+                <div class="progress-box-name">Protein</div>
+                <div class="progress-box-value">
+                  <span id="pgProCurrent">0</span>/<span id="pgProGoal"
+                    >120</span
+                  >g
+                </div>
+                <div class="progress-box-pct" id="pgProPct">0%</div>
+              </div>
+              <div class="progress-box">
+                <div class="progress-box-icon">🍞</div>
+                <div class="progress-box-name">Carbs</div>
+                <div class="progress-box-value">
+                  <span id="pgCarCurrent">0</span>/<span id="pgCarGoal"
+                    >250</span
+                  >g
+                </div>
+                <div class="progress-box-pct" id="pgCarPct">0%</div>
+              </div>
+              <div class="progress-box">
+                <div class="progress-box-icon">🧈</div>
+                <div class="progress-box-name">Fat</div>
+                <div class="progress-box-value">
+                  <span id="pgFatCurrent">0</span>/<span id="pgFatGoal">65</span
+                  >g
+                </div>
+                <div class="progress-box-pct" id="pgFatPct">0%</div>
+              </div>
+            </div>
+
+            <!-- Hydration -->
+            <div class="water-card">
+              <div class="water-header">
+                <span class="water-icon">💧</span>
+                <span class="water-label">Hydration</span>
+                <span class="water-vals"
+                  ><span id="pgWatCurrent">0.0</span>/<span id="pgWatGoal"
+                    >3.0</span
+                  >L</span
+                >
+                <span class="water-pct" id="pgWatPct">0%</span>
+              </div>
+              <div class="macro-track">
+                <div class="macro-fill water" id="pgWatBar"></div>
+              </div>
+              <p class="water-drops-hint">Tap a drop to add 250ml</p>
+              <div class="water-drops" id="pgWaterDrops"></div>
+            </div>
+
+            <!-- Logged Meals -->
+            <div class="meal-history" id="pgMealHistory">
+              <h3>🍽️ Logged Meals</h3>
+              <div class="meal-list" id="pgMealList">
+                <p class="meal-empty">
+                  No meals logged yet. Upload a food photo to get started!
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ History View ═══ -->
+        <section class="view" id="view-history">
+          <div class="container history-container">
+            <h2 class="view-title">📅 History</h2>
+            <div class="segmented" id="historyTabs">
+              <button class="seg-btn active" data-range="day">Daily</button>
+              <button class="seg-btn" data-range="week">Weekly</button>
+              <button class="seg-btn" data-range="month">Monthly</button>
+            </div>
+            <div class="history-panel" id="historyDailyPanel">
+              <div class="history-daily-grid">
+                <div class="history-meals-card">
+                  <p class="history-date" id="historyDate">Today</p>
+                  <div class="meal-list" id="historyMealList">
+                    <p class="meal-empty">No meals logged for this day.</p>
+                  </div>
+                </div>
+                <div class="history-summary-card">
+                  <h3>📋 Day Summary</h3>
+                  <div class="summary-row">
+                    <span>🔥 Calories</span><b id="daySumCal">0 kcal</b>
+                  </div>
+                  <div class="summary-row">
+                    <span>💪 Protein</span><b id="daySumPro">0 g</b>
+                  </div>
+                  <div class="summary-row">
+                    <span>🍞 Carbs</span><b id="daySumCar">0 g</b>
+                  </div>
+                  <div class="summary-row">
+                    <span>🧈 Fat</span><b id="daySumFat">0 g</b>
+                  </div>
+                  <div class="summary-row">
+                    <span>🍽️ Meals Logged</span><b id="daySumCount">0</b>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="history-panel hidden" id="historyChartPanel">
+              <div class="chart-card">
+                <canvas id="historyChart"></canvas>
+              </div>
+              <div class="chart-stats">
+                <div class="chart-stat">
+                  <span>📈 Avg / day</span><b id="chartAvg">0 kcal</b>
+                </div>
+                <div class="chart-stat">
+                  <span>🔥 Best day</span><b id="chartBest">0 kcal</b>
+                </div>
+                <div class="chart-stat">
+                  <span>🍽️ Total</span><b id="chartTotal">0 kcal</b>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ Statistics View ═══ -->
+        <section class="view" id="view-statistics">
+          <div class="container statistics-container">
+            <h2 class="view-title">📊 Statistics</h2>
+            <div class="stat-grid">
+              <div class="stat-card">
+                <div class="stat-icon-circle orange">🔥</div>
+                <div class="stat-value" id="statStreak">0</div>
+                <div class="stat-label">Day Streak</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon-circle green">🍽️</div>
+                <div class="stat-value" id="statMeals">0</div>
+                <div class="stat-label">Meals Logged</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon-circle blue">📊</div>
+                <div class="stat-value" id="statAvgCal">0</div>
+                <div class="stat-label">Total calories</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon-circle pink">🎯</div>
+                <div class="stat-value" id="statGoalMet">0%</div>
+                <div class="stat-label">Goal Achieved</div>
+              </div>
+            </div>
+
+            <!-- Extra stats -->
+            <div class="stat-extra">
+              <div class="stat-extra-card">
+                <span class="stat-extra-icon">⭐</span>
+                <span class="stat-extra-label">Most Logged Food</span>
+                <span class="stat-extra-value" id="statTopFood">—</span>
+              </div>
+              <div class="stat-extra-card">
+                <span class="stat-extra-icon">💧</span>
+                <span class="stat-extra-label">Total Water Drank</span>
+                <span class="stat-extra-value" id="statWater">0.0 L</span>
+              </div>
+            </div>
+
+            <!-- Meals by type + Last 7 days -->
+            <div class="stats-bottom-grid">
+              <div class="stats-panel">
+                <h3 class="stats-panel-title">🍽️ Meals by Type</h3>
+                <div class="meal-type-row">
+                  <span class="meal-type-emoji">🌅</span>
+                  <span class="meal-type-name">Breakfast</span>
+                  <div class="macro-track">
+                    <div class="macro-fill protein" id="breakfastBar"></div>
+                  </div>
+                  <b class="meal-type-count" id="breakfastCount">0</b>
+                </div>
+                <div class="meal-type-row">
+                  <span class="meal-type-emoji">☀️</span>
+                  <span class="meal-type-name">Lunch</span>
+                  <div class="macro-track">
+                    <div class="macro-fill carbs" id="lunchBar"></div>
+                  </div>
+                  <b class="meal-type-count" id="lunchCount">0</b>
+                </div>
+                <div class="meal-type-row">
+                  <span class="meal-type-emoji">🌙</span>
+                  <span class="meal-type-name">Dinner</span>
+                  <div class="macro-track">
+                    <div class="macro-fill fat" id="dinnerBar"></div>
+                  </div>
+                  <b class="meal-type-count" id="dinnerCount">0</b>
+                </div>
+                <div class="meal-type-row">
+                  <span class="meal-type-emoji">🍿</span>
+                  <span class="meal-type-name">Snack</span>
+                  <div class="macro-track">
+                    <div class="macro-fill water" id="snackBar"></div>
+                  </div>
+                  <b class="meal-type-count" id="snackCount">0</b>
+                </div>
+              </div>
+              <div class="stats-panel">
+                <h3 class="stats-panel-title">📈 Last 7 Days</h3>
+                <div class="stats-chart-box">
+                  <canvas id="statsChart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <h3 class="view-subtitle">🏅 Achievements</h3>
+            <div class="badges" id="badges"></div>
+          </div>
+        </section>
+
+        <!-- ═══ Profile View ═══ -->
+        <section class="view" id="view-profile">
+          <div class="container">
+            <h2 class="view-title">👤 Profile</h2>
+
+            <!-- Profile Header -->
+            <div class="profile-header">
+              <div class="profile-header-info">
+                <h3 id="pfHeaderName">Nutrify User</h3>
+                <p id="pfHeaderEmail">email@example.com</p>
+              </div>
+              <button class="btn-edit-profile" id="btnEditProfile">
+                ✏️ Edit
+              </button>
+            </div>
+
+            <form id="profileForm" class="profile-form">
+              <!-- Personal Info -->
+              <div class="profile-section">
+                <h3 class="profile-section-title">👤 Personal Info</h3>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="pfName">Full Name</label>
+                    <input type="text" id="pfName" />
+                  </div>
+                  <div class="form-group">
+                    <label for="pfGender">Gender</label>
+                    <select id="pfGender">
+                      <option value="">Prefer not to say</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="pfBirth">Birth Date</label>
+                    <input type="date" id="pfBirth" />
+                  </div>
+                  <div class="form-group">
+                    <label for="pfHeight">Height (cm)</label>
+                    <input type="number" id="pfHeight" min="50" max="250" />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="pfWeight">Weight (kg)</label>
+                    <input type="number" id="pfWeight" min="20" max="300" />
+                  </div>
+                  <div class="form-group"></div>
+                </div>
+              </div>
+
+              <!-- Diet Preferences -->
+              <div class="profile-section">
+                <h3 class="profile-section-title">🥗 Diet Preferences</h3>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="pfActivity">Activity Level</label>
+                    <select id="pfActivity">
+                      <option value="sedentary">Sedentary</option>
+                      <option value="light">Light</option>
+                      <option value="moderate">Moderate</option>
+                      <option value="active">Active</option>
+                      <option value="very_active">Very Active</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="pfGoal">Diet Goal</label>
+                    <select id="pfGoal">
+                      <option value="maintain">Maintain</option>
+                      <option value="lose_weight">Lose Weight</option>
+                      <option value="gain_muscle">Gain Muscle</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="pfDiet">Diet Type</label>
+                    <select id="pfDiet">
+                      <option value="omnivore">Omnivore</option>
+                      <option value="vegetarian">Vegetarian</option>
+                      <option value="vegan">Vegan</option>
+                      <option value="keto">Keto</option>
+                    </select>
+                  </div>
+                  <div class="form-group"></div>
+                </div>
+              </div>
+
+              <!-- Daily Goals -->
+              <div class="profile-section">
+                <h3 class="profile-section-title">🎯 Daily Goals</h3>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="pfCal">Calories (kcal)</label>
+                    <input type="number" id="pfCal" min="500" max="8000" />
+                  </div>
+                  <div class="form-group">
+                    <label for="pfProtein">Protein (g)</label>
+                    <input type="number" id="pfProtein" min="0" max="500" />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="pfCarbs">Carbs (g)</label>
+                    <input type="number" id="pfCarbs" min="0" max="1000" />
+                  </div>
+                  <div class="form-group">
+                    <label for="pfFat">Fat (g)</label>
+                    <input type="number" id="pfFat" min="0" max="500" />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="pfWater">Water (ml)</label>
+                    <input type="number" id="pfWater" min="0" max="10000" />
+                  </div>
+                  <div class="form-group"></div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                class="btn btn-profile-save hidden"
+                id="btnProfileSave"
+              >
+                💾 Save Profile
+              </button>
+              <p class="profile-note" id="profileNote"></p>
+            </form>
+          </div>
+        </section>
+      </main>
+
+      <!-- ═══ Modals (outside views so they overlay every page) ═══ -->
+      <div class="camera-modal hidden" id="cameraModal">
+        <div class="camera-modal-box">
+          <div class="camera-frame" aria-hidden="true">
+            <div
+              class="camera-live-status"
+              id="cameraLiveStatus"
+              data-state="scanning"
+            >
+              <span class="camera-live-dot"></span>
+              <span id="cameraLiveText">Starting AI scanner...</span>
+            </div>
+            <div class="camera-detection-grid"></div>
+            <div class="camera-scan-beam"></div>
+            <div class="camera-target">
+              <span class="camera-corner corner-top-left"></span>
+              <span class="camera-corner corner-top-right"></span>
+              <span class="camera-corner corner-bottom-left"></span>
+              <span class="camera-corner corner-bottom-right"></span>
+            </div>
+            <div class="camera-detection-hint" id="cameraDetectionHint">
+              Center food in frame
+            </div>
+          </div>
+          <video id="cameraVideo" autoplay playsinline muted></video>
+          <div class="camera-modal-actions">
+            <button type="button" class="btn btn-camera-capture" id="btnCameraCapture">
+              📸 Capture
+            </button>
+            <button type="button" class="btn btn-camera-close" id="btnCameraClose">
               ✕
             </button>
           </div>
         </div>
+      </div>
 
-        <!-- ═══ Spinner ═══ -->
-        <div class="spinner-container hidden" id="spinnerContainer">
-          <div class="spinner"></div>
-          <p class="spinner-text">VitaVision AI is analyzing your food...</p>
-        </div>
-
-        <!-- ═══ Result Card ═══ -->
-        <div class="result-card hidden" id="resultCard">
-          <div class="result-header">
-            <span class="result-badge">AI Analysis Complete</span>
-          </div>
-
-          <div class="result-main">
-            <div class="result-icon" id="resultIcon">🍕</div>
-            <div class="result-details">
-              <h2 class="result-food" id="resultFood">—</h2>
-              <div class="confidence-bar-container">
-                <div class="confidence-label">
-                  <span>Confidence</span>
-                  <span id="confidenceText">0%</span>
-                </div>
-                <div class="confidence-track">
-                  <div class="confidence-fill" id="confidenceFill"></div>
-                </div>
-              </div>
+      <div class="camera-modal hidden" id="mealDetailModal">
+        <div class="meal-detail-box">
+          <button
+            type="button"
+            class="meal-detail-close"
+            id="mealDetailClose"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+          <div class="meal-detail-image-wrap">
+            <img
+              id="mealDetailImage"
+              class="meal-detail-image hidden"
+              alt="Meal photo"
+            />
+            <div class="meal-detail-noimage hidden" id="mealDetailNoImage">
+              🍽️
             </div>
           </div>
-
-          <!-- Top-3 Predictions -->
-          <div class="top-predictions" id="topPredictions">
-            <p class="top-label">Top predictions</p>
-            <div id="topList"></div>
-          </div>
-
-          <!-- ═══ Nutrition Card ═══ -->
-          <div class="nutrition-card hidden" id="nutritionCard">
-            <!-- Calories -->
-            <div class="n-calories">
-              <div class="n-calories-icon">🔥</div>
-              <div class="n-calories-number" id="nCalories">—</div>
-              <div class="n-calories-unit">Calories (per 100g)</div>
-            </div>
-
-            <!-- Macros -->
-            <div class="n-macros">
-              <div class="n-macro">
-                <span class="n-macro-bar n-bar-carbs" id="barCarbs"></span>
-                <span class="n-macro-val" id="nCarbs">—</span>
-                <span class="n-macro-unit">Carbs</span>
-              </div>
-              <div class="n-macro">
-                <span class="n-macro-bar n-bar-protein" id="barProtein"></span>
-                <span class="n-macro-val" id="nProtein">—</span>
-                <span class="n-macro-unit">Protein</span>
-              </div>
-              <div class="n-macro">
-                <span class="n-macro-bar n-bar-fat" id="barFat"></span>
-                <span class="n-macro-val" id="nFat">—</span>
-                <span class="n-macro-unit">Fat</span>
-              </div>
-            </div>
-
-            <!-- Health Score -->
-            <div class="n-health">
-              <div class="n-health-top">
-                <span class="n-health-icon">❤️</span>
-                <span class="n-health-label">Health Score</span>
-                <span class="n-health-score" id="nHealthScore">—</span>
-              </div>
-              <div class="n-health-track">
-                <div class="n-health-fill" id="nHealthFill"></div>
-              </div>
-              <div class="n-health-ticks">
-                <span>0</span>
-                <span>5</span>
-                <span>10</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Confirmation -->
-          <div class="confirmation">
-            <p class="confirmation-question">Is this correct?</p>
-            <div class="confirmation-buttons">
-              <button class="btn btn-correct" id="btnCorrect">✓ Correct</button>
-              <button class="btn btn-incorrect" id="btnIncorrect">
-                ✗ Incorrect
-              </button>
-            </div>
-          </div>
-
-          <!-- Correction Form (hidden initially) -->
-          <div class="correction-form hidden" id="correctionForm">
-            <label for="correctedLabel"
-              >Select or search the correct food name:</label
-            >
-            <div class="food-search-container">
-              <div class="food-search-input-wrapper">
-                <span class="food-search-icon">🔍</span>
-                <input
-                  type="text"
-                  id="foodSearchInput"
-                  placeholder="Type to search foods..."
-                  autocomplete="off"
-                />
-                <button
-                  type="button"
-                  class="food-search-clear hidden"
-                  id="foodSearchClear"
-                >
-                  ✕
-                </button>
-              </div>
-              <div class="food-dropdown hidden" id="foodDropdown">
-                <div class="food-dropdown-list" id="foodDropdownList"></div>
-              </div>
-              <div class="food-selected-tag hidden" id="foodSelectedTag">
-                <span id="foodSelectedLabel"></span>
-                <button
-                  type="button"
-                  class="food-tag-remove"
-                  id="foodTagRemove"
-                >
-                  ✕
-                </button>
-              </div>
-              <button
-                class="btn btn-submit-correct hidden"
-                id="btnSubmitCorrection"
-              >
-                ✓ Confirm Food
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ═══ Metadata Form ═══ -->
-        <div class="meta-form hidden" id="metaForm">
-          <div class="meta-card">
-            <h3>📋 Almost done! One last step</h3>
-            <p class="meta-subtitle">
-              Add optional info before we save your submission.
-            </p>
-            <form id="metadataForm">
-              <input type="hidden" id="finalLabel" />
-              <input type="hidden" id="imageData" />
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="metaEmail"
-                    >📧 Email <span>(optional)</span></label
-                  >
-                  <input
-                    type="email"
-                    id="metaEmail"
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <div class="form-group">
-                  <label for="metaCountry"
-                    >🌍 Country <span>(optional)</span></label
-                  >
-                  <input
-                    type="text"
-                    id="metaCountry"
-                    placeholder="e.g. Myanmar"
-                  />
-                </div>
-              </div>
-
-              <button type="submit" class="btn btn-save" id="btnSave">
-                💾 Save to Database
-              </button>
-            </form>
-            <p class="meta-note">
-              Your image will be stored securely on Google Cloud. Metadata is
-              saved to a Google Sheet to help build the food dataset.
-            </p>
-          </div>
-        </div>
-
-        <!-- ═══ Success State ═══ -->
-        <div class="success-state hidden" id="successState">
-          <div class="success-animation">
-            <div class="success-ring">
-              <svg class="success-svg" viewBox="0 0 80 80">
-                <circle class="success-circle-bg" cx="40" cy="40" r="34" />
-                <circle class="success-circle-fill" cx="40" cy="40" r="34" />
-                <polyline class="success-check" points="24,42 36,54 56,30" />
-              </svg>
-            </div>
-          </div>
-          <h2>Uploaded Successfully! 🎉</h2>
-          <p class="success-message">
-            Your image and nutrition data have been saved to the database. Thank
-            you for contributing to VitaVision!
+          <h3 class="meal-detail-name" id="mealDetailName">—</h3>
+          <p class="meal-detail-meta" id="mealDetailMeta"></p>
+          <p class="meal-detail-serving">
+            Serving size <strong id="mealDetailServing">—</strong>
           </p>
-          <button class="btn btn-new" id="btnNewUpload">
-            🔄 Upload Another
+          <div class="meal-detail-macros">
+            <div class="meal-detail-macro">
+              <span class="meal-detail-value" id="mealDetailCal">—</span>
+              <span class="meal-detail-label">kcal</span>
+            </div>
+            <div class="meal-detail-macro">
+              <span class="meal-detail-value" id="mealDetailPro">—</span>
+              <span class="meal-detail-label">Protein</span>
+            </div>
+            <div class="meal-detail-macro">
+              <span class="meal-detail-value" id="mealDetailFat">—</span>
+              <span class="meal-detail-label">Fat</span>
+            </div>
+            <div class="meal-detail-macro">
+              <span class="meal-detail-value" id="mealDetailCarbs">—</span>
+              <span class="meal-detail-label">Carbs</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn btn-save-meal meal-detail-close-btn"
+            id="mealDetailCloseBtn"
+          >
+            Close
           </button>
         </div>
       </div>
-    </main>
+    </div>
 
-    <!-- ═══ Footer ═══ -->
-    <footer>
-      <p>© 2026 VitaVision | AI-powered food intelligence</p>
-    </footer>
+    <!-- ═══ Onboarding Overlay ═══ -->
+    <div class="onboarding-overlay hidden" id="onboardingOverlay">
+      <div class="onboarding-card">
+        <div class="onboarding-progress">
+          <span class="onb-dot active"></span>
+          <span class="onb-dot"></span>
+          <span class="onb-dot"></span>
+        </div>
+        <div class="onb-step active" data-step="1">
+          <h2>Tell us about yourself</h2>
+          <p class="onb-sub">We'll personalize your daily nutrition goals.</p>
+          <div class="form-group">
+            <label>Gender</label>
+            <select id="onbGender">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Birth Date</label>
+            <input type="date" id="onbBirth" />
+          </div>
+          <div class="form-group">
+            <label>Activity Level</label>
+            <select id="onbActivity">
+              <option value="sedentary">Sedentary</option>
+              <option value="light">Light</option>
+              <option value="moderate">Moderate</option>
+              <option value="active">Active</option>
+              <option value="very_active">Very Active</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Diet Type</label>
+            <select id="onbDiet">
+              <option value="omnivore">Omnivore</option>
+              <option value="vegetarian">Vegetarian</option>
+              <option value="vegan">Vegan</option>
+              <option value="keto">Keto</option>
+            </select>
+          </div>
+        </div>
+        <div class="onb-step" data-step="2">
+          <h2>What's your goal?</h2>
+          <p class="onb-sub">Pick the direction that fits you best.</p>
+          <div class="goal-cards">
+            <button type="button" class="goal-card" data-goal="lose_weight">
+              <span class="goal-emoji">🏃</span><span>Lose Weight</span>
+            </button>
+            <button
+              type="button"
+              class="goal-card selected"
+              data-goal="maintain"
+            >
+              <span class="goal-emoji">⚖️</span><span>Maintain</span>
+            </button>
+            <button type="button" class="goal-card" data-goal="gain_muscle">
+              <span class="goal-emoji">💪</span><span>Gain Muscle</span>
+            </button>
+          </div>
+        </div>
+        <div class="onb-step" data-step="3">
+          <h2>Your measurements</h2>
+          <p class="onb-sub">Used to calculate your daily calorie target.</p>
+          <div class="form-group">
+            <label>Height (cm)</label>
+            <input type="number" id="onbHeight" placeholder="e.g. 170" />
+          </div>
+          <div class="form-group">
+            <label>Weight (kg)</label>
+            <input type="number" id="onbWeight" placeholder="e.g. 65" />
+          </div>
+        </div>
+        <div class="onb-actions">
+          <button class="btn btn-ghost hidden" id="onbBack">← Back</button>
+          <button class="btn btn-onb-next" id="onbNext">Next →</button>
+        </div>
+      </div>
+    </div>
 
-    <script src="static/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="/static/upload.js?v=20260819a"></script>
+<script src="/static/app.js?v=20260819a"></script>
+    <script src="/static/tracker.js?v=20260816e"></script>
+    <script src="/static/nav.js?v=20260814"></script>
+    <script src="/static/onboarding.js?v=20260814"></script>
+    <script src="/static/history.js?v=20260816c"></script>
+    <script src="/static/stats.js?v=20260816f"></script>
+    <script src="/static/profile.js?v=20260814"></script>
   </body>
 </html>

@@ -8,7 +8,16 @@ const uploadContent = document.getElementById("uploadContent");
 const uploadPreview = document.getElementById("uploadPreview");
 const previewImage = document.getElementById("previewImage");
 const fileInput = document.getElementById("fileInput");
+const btnCamera = document.getElementById("btnCamera");
+const btnGallery = document.getElementById("btnGallery");
 const btnRemove = document.getElementById("btnRemove");
+const cameraModal = document.getElementById("cameraModal");
+const cameraVideo = document.getElementById("cameraVideo");
+const btnCameraCapture = document.getElementById("btnCameraCapture");
+const btnCameraClose = document.getElementById("btnCameraClose");
+const cameraLiveStatus = document.getElementById("cameraLiveStatus");
+const cameraLiveText = document.getElementById("cameraLiveText");
+const cameraDetectionHint = document.getElementById("cameraDetectionHint");
 const spinnerContainer = document.getElementById("spinnerContainer");
 const resultCard = document.getElementById("resultCard");
 const resultIcon = document.getElementById("resultIcon");
@@ -19,6 +28,8 @@ const topList = document.getElementById("topList");
 const topPredictions = document.getElementById("topPredictions");
 const btnCorrect = document.getElementById("btnCorrect");
 const btnIncorrect = document.getElementById("btnIncorrect");
+const confirmationChoices = document.getElementById("confirmationChoices");
+const btnSaveMeal = document.getElementById("btnSaveMeal");
 const correctionForm = document.getElementById("correctionForm");
 const foodSearchInput = document.getElementById("foodSearchInput");
 const foodDropdown = document.getElementById("foodDropdown");
@@ -38,22 +49,18 @@ const barFat = document.getElementById("barFat");
 const barCarbs = document.getElementById("barCarbs");
 const nHealthScore = document.getElementById("nHealthScore");
 const nHealthFill = document.getElementById("nHealthFill");
-const metaForm = document.getElementById("metaForm");
-const metadataForm = document.getElementById("metadataForm");
-const finalLabel = document.getElementById("finalLabel");
-const imageData = document.getElementById("imageData");
-const metaEmail = document.getElementById("metaEmail");
-const metaCountry = document.getElementById("metaCountry");
-const btnSave = document.getElementById("btnSave");
+const saveMeal = document.getElementById("saveMeal");
+const servingSize = document.getElementById("servingSize");
+const saveMealNote = document.getElementById("saveMealNote");
+const nutritionServingWeight = document.getElementById("nutritionServingWeight");
 const successState = document.getElementById("successState");
-const successImageId = document.getElementById("successImageId");
-const successLabel = document.getElementById("successLabel");
-const successTime = document.getElementById("successTime");
 const btnNewUpload = document.getElementById("btnNewUpload");
 
 // ── State ───────────────────────────────────────────────────────────────
 let currentFile = null; // Raw File object from input / drop
 let predictionData = null; // Response from /predict
+let currentSource = "gallery";
+let currentNutritionPer100g = null;
 
 // Food emoji map
 const FOOD_EMOJI = {
@@ -85,38 +92,27 @@ const FOOD_EMOJI = {
   default: "🍽️",
 };
 
-// ── Full food list (mirrors main.py CLASS_NAMES + extra suggestions) ────
-const ALL_FOODS = [
-  // Model classes (CLASS_NAMES from backend)
-  { name: "Apple", category: "model" },
-  { name: "Banana", category: "model" },
-  { name: "Beef", category: "model" },
-  { name: "Blueberries", category: "model" },
-  { name: "Carrots", category: "model" },
-  { name: "Chicken Wings", category: "model" },
-  { name: "Egg", category: "model" },
-  { name: "Honey", category: "model" },
-  { name: "Mushrooms", category: "model" },
-  { name: "Strawberries", category: "model" },
-  // Extra common foods
-  { name: "Pizza", category: "extra" },
-  { name: "Pasta", category: "extra" },
-  { name: "Rice", category: "extra" },
-  { name: "Bread", category: "extra" },
-  { name: "Salad", category: "extra" },
-  { name: "Sushi", category: "extra" },
-  { name: "Burger", category: "extra" },
-  { name: "Soup", category: "extra" },
-  { name: "Sandwich", category: "extra" },
-  { name: "Fish", category: "extra" },
-  { name: "Cheese", category: "extra" },
-  { name: "Yogurt", category: "extra" },
-  { name: "Noodles", category: "extra" },
-  { name: "Ice Cream", category: "extra" },
-  { name: "Cake", category: "extra" },
-];
+// ── Food list (loaded from Supabase food_nutrition) ─────────────────────
+let ALL_FOODS = [];
 
-let selectedFood = null; // Currently selected food name
+async function loadFoodList() {
+  const supabase = window.__supabase;
+  if (!supabase) return;
+  const { data, error } = await supabase
+    .from("food_nutrition")
+    .select("food_name")
+    .order("food_name");
+  if (!error && data) {
+    ALL_FOODS = data.map((r) => ({
+      key: r.food_name,
+      name: r.food_name.replace(/_/g, " "),
+      category: "food",
+    }));
+  }
+}
+
+let selectedFood = null; // Currently selected food display name
+let selectedFoodKey = null; // DB key (food_nutrition.food_name)
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 function getFoodEmoji(label) {
@@ -145,8 +141,17 @@ function formatPct(val) {
   return (val * 100).toFixed(1) + "%";
 }
 
-function nowISO() {
-  return new Date().toISOString().replace("T", " ").slice(0, 19);
+async function readJsonResponse(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    const summary = text.replace(/\s+/g, " ").trim().slice(0, 120);
+    throw new Error(
+      `Server returned ${response.status}: ${summary || "Invalid response"}`,
+    );
+  }
 }
 
 function resetUI() {
@@ -155,18 +160,30 @@ function resetUI() {
   resultCard.classList.add("hidden");
   correctionForm.classList.add("hidden");
   nutritionCard.classList.add("hidden");
-  metaForm.classList.add("hidden");
   successState.classList.add("hidden");
+  confirmationChoices.classList.remove("hidden");
+  btnSaveMeal.classList.add("hidden");
   uploadZone.classList.remove("has-image");
   uploadContent.classList.remove("hidden");
   uploadPreview.classList.add("hidden");
   previewImage.src = "";
-  currentFile = null;
+currentFile = null;
   predictionData = null;
+  currentSource = "gallery";
+  currentNutritionPer100g = null;
+  window.__foodImageFile = null;
+  window.__foodImageSource = null;
+  window.__foodImageConfidence = null;
+  saveMeal.classList.add("hidden");
+  servingSize.value = "100";
+  saveMealNote.textContent = "";
   // Remove any not-food notifications
-  document.querySelectorAll(".not-food-notification").forEach((el) => el.remove());
+  document
+    .querySelectorAll(".not-food-notification")
+    .forEach((el) => el.remove());
   // Reset food search
   selectedFood = null;
+  selectedFoodKey = null;
   foodSearchInput.value = "";
   foodDropdown.classList.add("hidden");
   foodSearchClear.classList.add("hidden");
@@ -176,15 +193,174 @@ function resetUI() {
 
 // ── Trigger file input ──────────────────────────────────────────────────
 uploadZone.addEventListener("click", (e) => {
-  // Don't trigger if clicking the remove button
+  // Don't trigger if clicking the remove button or the explicit buttons
   if (e.target.closest(".btn-remove")) return;
+  if (e.target.closest(".upload-buttons")) return;
   fileInput.click();
+});
+
+// ── Gallery button: native label opens the file picker (no JS needed) ──
+// (the <label for="fileInput"> handles clicks by the browser itself)
+
+// ── Live camera + continuous food detection ─────────────────────────────
+let cameraStream = null;
+let liveDetectionTimer = null;
+let liveDetectionController = null;
+let liveDetectionErrorLogged = false;
+
+function setLiveDetectionState(state, text, hint) {
+  cameraLiveStatus.dataset.state = state;
+  cameraLiveText.textContent = text;
+  cameraDetectionHint.textContent = hint;
+}
+
+function scheduleLiveDetection(delay = 500) {
+  clearTimeout(liveDetectionTimer);
+  if (cameraStream) liveDetectionTimer = setTimeout(detectLiveFrame, delay);
+}
+
+async function detectLiveFrame() {
+  if (!cameraStream || cameraVideo.readyState < 2 || !cameraVideo.videoWidth) {
+    scheduleLiveDetection(300);
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+  const scale = Math.min(1, 320 / cameraVideo.videoWidth);
+  canvas.width = Math.round(cameraVideo.videoWidth * scale);
+  canvas.height = Math.round(cameraVideo.videoHeight * scale);
+  canvas.getContext("2d").drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", 0.72),
+  );
+  if (!blob || !cameraStream) return;
+
+  const formData = new FormData();
+  formData.append("file", blob, "live-frame.jpg");
+  const controller = new AbortController();
+  liveDetectionController = controller;
+  let nextDelay = 700;
+
+  try {
+    const response = await fetch("/predict-yolo", {
+      method: "POST",
+      body: formData,
+      signal: controller.signal,
+    });
+    const data = await readJsonResponse(response);
+    if (!response.ok) throw new Error(data.error || `Server error: ${response.status}`);
+
+    liveDetectionErrorLogged = false;
+    if (!data.is_food) {
+      setLiveDetectionState("no-food", "No Food", "Point camera at food");
+    } else {
+      setLiveDetectionState(
+        "food",
+        `${capitalize(data.prediction)} ${formatPct(data.confidence)}`,
+        "Food detected - ready to capture",
+      );
+    }
+  } catch (err) {
+    if (err.name === "AbortError") return;
+    nextDelay = 5000;
+    if (!liveDetectionErrorLogged) {
+      console.warn("Live food detection unavailable:", err);
+      liveDetectionErrorLogged = true;
+    }
+    setLiveDetectionState(
+      "error",
+      "AI scanner unavailable",
+      "Retrying live detection...",
+    );
+  } finally {
+    if (liveDetectionController === controller) liveDetectionController = null;
+    if (!controller.signal.aborted) scheduleLiveDetection(nextDelay);
+  }
+}
+
+async function openLiveCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showError("Live camera requires HTTPS and camera permission.");
+    return;
+  }
+
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    });
+    cameraVideo.srcObject = cameraStream;
+    cameraModal.classList.remove("hidden");
+    liveDetectionErrorLogged = false;
+    setLiveDetectionState(
+      "scanning",
+      "Scanning for food...",
+      "Center food in frame",
+    );
+    await cameraVideo.play();
+    scheduleLiveDetection();
+  } catch (err) {
+    closeCamera();
+    const message =
+      err.name === "NotAllowedError"
+        ? "Camera permission was denied. Allow access and try again."
+        : "Unable to open the camera. Check whether another app is using it.";
+    showError(message);
+    console.error("Camera error:", err);
+  }
+}
+
+function closeCamera() {
+  clearTimeout(liveDetectionTimer);
+  liveDetectionTimer = null;
+  if (liveDetectionController) {
+    liveDetectionController.abort();
+    liveDetectionController = null;
+  }
+  if (cameraStream) {
+    cameraStream.getTracks().forEach((track) => track.stop());
+    cameraStream = null;
+  }
+  cameraVideo.srcObject = null;
+  cameraModal.classList.add("hidden");
+}
+
+btnCamera.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  openLiveCamera();
+});
+
+btnCameraClose.addEventListener("click", closeCamera);
+
+btnCameraCapture.addEventListener("click", function () {
+  if (!cameraVideo || !cameraVideo.videoWidth) return;
+  var canvas = document.createElement("canvas");
+  canvas.width = cameraVideo.videoWidth;
+  canvas.height = cameraVideo.videoHeight;
+  canvas.getContext("2d").drawImage(cameraVideo, 0, 0);
+  canvas.toBlob(
+    function (blob) {
+      var file = new File([blob], "camera-photo.jpg", {
+        type: "image/jpeg",
+      });
+      closeCamera();
+      handleFile(file, "camera");
+    },
+    "image/jpeg",
+    0.92,
+  );
 });
 
 // ── File selection via input ────────────────────────────────────────────
 fileInput.addEventListener("change", () => {
   if (fileInput.files.length > 0) {
     handleFile(fileInput.files[0]);
+    fileInput.value = "";
   }
 });
 
@@ -214,7 +390,7 @@ btnRemove.addEventListener("click", (e) => {
 });
 
 // ── Handle a selected/dropped file ──────────────────────────────────────
-function handleFile(file) {
+function handleFile(file, source = "gallery") {
   // Validate
   const validTypes = ["image/jpeg", "image/png", "image/jpg"];
   if (!validTypes.includes(file.type)) {
@@ -222,7 +398,11 @@ function handleFile(file) {
     return;
   }
 
-  currentFile = file;
+currentFile = file;
+  currentSource = source;
+  window.__foodImageFile = file;
+  window.__foodImageSource = source;
+  window.__foodImageConfidence = null;
 
   // Show preview
   const reader = new FileReader();
@@ -238,53 +418,71 @@ function handleFile(file) {
   reader.readAsDataURL(file);
 }
 
-// ── Submit image to /predict ────────────────────────────────────────────
+// ── Submit image to the gallery or camera prediction pipeline ──────────
 async function submitForPrediction(file) {
   // Hide previous results, show spinner
   resultCard.classList.add("hidden");
   correctionForm.classList.add("hidden");
-  metaForm.classList.add("hidden");
   nutritionCard.classList.add("hidden");
   successState.classList.add("hidden");
   // Remove any previous not-food notification
-  document.querySelectorAll(".not-food-notification").forEach((el) => el.remove());
+  document
+    .querySelectorAll(".not-food-notification")
+    .forEach((el) => el.remove());
   spinnerContainer.classList.remove("hidden");
+  var scanOverlay = document.getElementById("scanOverlay");
+  if (scanOverlay) scanOverlay.classList.remove("hidden");
 
   const formData = new FormData();
   formData.append("file", file);
+  const endpoint = currentSource === "camera" ? "/predict-yolo" : "/predict";
 
   try {
-    const response = await fetch("/predict", {
+    const response = await fetch(endpoint, {
       method: "POST",
       body: formData,
     });
+    const data = await readJsonResponse(response);
 
-    // ── Handle not-food detection (HTTP 400) ──
     if (!response.ok) {
-      const err = await response.json();
       spinnerContainer.classList.add("hidden");
+      if (scanOverlay) scanOverlay.classList.add("hidden");
 
-      // Check if it's a "not food" response
-      if (err.is_food === false) {
-        showNotFoodNotification(err.food_detection_confidence);
+      if (data.is_food === false) {
+        showNotFoodNotification(
+          data.not_food_confidence ?? 1 - data.food_detection_confidence,
+        );
         return;
       }
 
-      throw new Error(err.error || `Server error: ${response.status}`);
+      throw new Error(data.error || `Server error: ${response.status}`);
     }
 
-    predictionData = await response.json();
+    if (data.is_food === false) {
+      spinnerContainer.classList.add("hidden");
+      if (scanOverlay) scanOverlay.classList.add("hidden");
+      showNotFoodNotification(
+        data.not_food_confidence ?? 1 - data.food_detection_confidence,
+      );
+      return;
+    }
+
+    predictionData = data;
+    if (scanOverlay) scanOverlay.classList.add("hidden");
     showResults(predictionData);
   } catch (err) {
     showError(err.message);
     spinnerContainer.classList.add("hidden");
+    if (scanOverlay) scanOverlay.classList.add("hidden");
   }
 }
 
 // ── Show "Not Food" notification ───────────────────────────────────────
 function showNotFoodNotification(confidence) {
   // Remove any existing not-food notification
-  document.querySelectorAll(".not-food-notification").forEach((el) => el.remove());
+  document
+    .querySelectorAll(".not-food-notification")
+    .forEach((el) => el.remove());
 
   const notif = document.createElement("div");
   notif.className = "not-food-notification";
@@ -294,7 +492,7 @@ function showNotFoodNotification(confidence) {
       <h3>Not a Food Image</h3>
       <p>The image you uploaded does not appear to be food.
          Please upload a clear photo of food to continue.</p>
-      <p class="not-food-confidence">Detection confidence: ${(confidence * 100).toFixed(1)}% (not food)</p>
+      <p class="not-food-confidence">Not-food confidence: ${(confidence * 100).toFixed(1)}%</p>
     </div>
   `;
 
@@ -307,6 +505,9 @@ function showNotFoodNotification(confidence) {
 function showResults(data) {
   spinnerContainer.classList.add("hidden");
   resultCard.classList.remove("hidden");
+
+  // Record confidence for the save-meal upload flow
+  window.__foodImageConfidence = data.confidence || null;
 
   // Main prediction
   const label = data.prediction;
@@ -351,84 +552,302 @@ function showResults(data) {
   resultCard.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-// ── Nutrition lookup map (client-side copy) ────────────────────────────
-const NUTRITION_MAP = {
-  apple: { protein: 0.2, fat: 0.2, carbs: 14.8, calories: 56, healthScore: 9 },
-  banana: { protein: 0.7, fat: 0.3, carbs: 23.0, calories: 88, healthScore: 9 },
-  beef: { protein: 27.3, fat: 11.4, carbs: 0.0, calories: 219, healthScore: 9 },
-  chicken_wings: {
-    protein: 23.9,
-    fat: 6.0,
-    carbs: 0.0,
-    calories: 156,
-    healthScore: 9,
-  },
-  carrots: { protein: 0.8, fat: 0.5, carbs: 7.9, calories: 37, healthScore: 9 },
-  egg: { protein: 48.1, fat: 39.8, carbs: 1.9, calories: 576, healthScore: 5 },
-  mushrooms: {
-    protein: 2.9,
-    fat: 0.4,
-    carbs: 4.1,
-    calories: 25,
-    healthScore: 9,
-  },
-  strawberries: {
-    protein: 0.6,
-    fat: 0.2,
-    carbs: 7.6,
-    calories: 31,
-    healthScore: 9,
-  },
+// ── Health score (mirrors main.py calculate_health_score) ──────────────
+function calculateHealthScore(protein, fat, carbs, calories) {
+  let score = 5.0;
+  if (protein >= 25) score += 2;
+  else if (protein >= 15) score += 1;
+  else if (protein >= 5) score += 0.5;
+  if (fat <= 5) score += 2;
+  else if (fat <= 15) score += 1;
+  else if (fat > 30) score -= 2;
+  if (carbs <= 50) score += 1;
+  else if (carbs > 70) score -= 1;
+  if (calories <= 200) score += 1;
+  else if (calories > 400) score -= 1;
+  return Math.round(Math.max(0, Math.min(score, 10)) * 10) / 10;
+}
+
+// ── Nutrition lookup and serving-size calculation ──────────────────────
+function normalizeNutrition(raw) {
+  if (!raw) return null;
+  const numberFrom = (...keys) => {
+    for (const key of keys) {
+      const value = Number.parseFloat(raw[key]);
+      if (Number.isFinite(value)) return value;
+    }
+    return 0;
+  };
+  return {
+    calories: numberFrom("calories", "calories_per_100g"),
+    protein: numberFrom("protein", "protein_g_per_100g"),
+    fat: numberFrom("fat", "fat_g_per_100g"),
+    carbs: numberFrom("carbohydrate", "carbs", "carbs_g_per_100g"),
+    healthScore: numberFrom("health_score"),
+  };
+}
+
+function formatNutrient(value) {
+  return String(Math.round(value));
+}
+
+function renderNutritionForServing() {
+  if (!currentNutritionPer100g) return;
+  const weight = Number.parseFloat(servingSize.value);
+  if (!Number.isFinite(weight) || weight < 1 || weight > 2000) {
+    nutritionCard.classList.add("hidden");
+    saveMealNote.textContent = "Enter a weight between 1 g and 2000 g.";
+    return;
+  }
+
+  saveMealNote.textContent = "";
+  const scale = weight / 100;
+  const calories = currentNutritionPer100g.calories * scale;
+  const protein = currentNutritionPer100g.protein * scale;
+  const fat = currentNutritionPer100g.fat * scale;
+  const carbs = currentNutritionPer100g.carbs * scale;
+  const score =
+    currentNutritionPer100g.healthScore ||
+    calculateHealthScore(
+      currentNutritionPer100g.protein,
+      currentNutritionPer100g.fat,
+      currentNutritionPer100g.carbs,
+      currentNutritionPer100g.calories,
+    );
+
+  nutritionServingWeight.textContent = `${formatNutrient(weight)} g`;
+  nCalories.textContent = formatNutrient(calories);
+  nProtein.textContent = formatNutrient(protein) + "g";
+  nFat.textContent = formatNutrient(fat) + "g";
+  nCarbs.textContent = formatNutrient(carbs) + "g";
+
+  const percentage = (value, maximum) =>
+    Math.min((value / maximum) * 100, 100) + "%";
+  barProtein.style.setProperty("--fill-width", percentage(protein, 50));
+  barFat.style.setProperty("--fill-width", percentage(fat, 50));
+  barCarbs.style.setProperty("--fill-width", percentage(carbs, 100));
+
+  nHealthScore.textContent = score + "/10";
+  nHealthFill.style.width = (score / 10) * 100 + "%";
+  if (score >= 8) {
+    nHealthFill.style.background = "linear-gradient(90deg, #22c55e, #16a34a)";
+    nHealthScore.style.color = "#16a34a";
+  } else if (score >= 5) {
+    nHealthFill.style.background = "linear-gradient(90deg, #fbbf24, #f59e0b)";
+    nHealthScore.style.color = "#d97706";
+  } else {
+    nHealthFill.style.background = "linear-gradient(90deg, #f87171, #ef4444)";
+    nHealthScore.style.color = "#dc2626";
+  }
+  nutritionCard.classList.remove("hidden");
+}
+
+async function showNutritionCard(foodKey, providedNutrition = null) {
+  if (!nutritionCard || !nCalories) return;
+  saveMeal.classList.remove("hidden");
+  saveMealNote.textContent = "Loading nutrition data...";
+
+  let nutrition = normalizeNutrition(providedNutrition);
+  const supabase = window.__supabase;
+  if (!nutrition && supabase) {
+    const normalized = String(foodKey || "")
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "_");
+    const { data, error } = await supabase
+      .from("food_nutrition")
+      .select(
+        "calories_per_100g, protein_g_per_100g, fat_g_per_100g, carbs_g_per_100g",
+      )
+      .eq("food_name", normalized)
+      .maybeSingle();
+    if (!error) nutrition = normalizeNutrition(data);
+  }
+
+  if (!nutrition) {
+    currentNutritionPer100g = null;
+    nutritionCard.classList.add("hidden");
+    saveMealNote.textContent = "Nutrition data is unavailable for this food.";
+    return;
+  }
+
+  currentNutritionPer100g = nutrition;
+  renderNutritionForServing();
+  saveMeal.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+servingSize.addEventListener("input", renderNutritionForServing);
+
+// ── Meal detail modal (shared with tracker.js / history.js) ────────────
+var MEAL_TYPE_ICONS = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍿" };
+
+function mealDetailTime(loggedAt) {
+  var d = new Date(loggedAt);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+window.buildMealItemHTML = function (m, imageUrl, clickable) {
+  var t = mealDetailTime(m.logged_at);
+  if (clickable === false) {
+    return (
+      '<div class="meal-item">' +
+      '<span class="meal-item-icon">' +
+      (MEAL_TYPE_ICONS[m.meal_type] || "🍽️") +
+      "</span>" +
+      '<span class="meal-item-name">' +
+      m.food_name +
+      "</span>" +
+      '<span class="meal-item-cals">' +
+      Math.round(parseFloat(m.calories) || 0) +
+      " kcal</span>" +
+      '<span class="meal-item-time">' +
+      t +
+      "</span>" +
+      '<span class="meal-item-type">' +
+      m.meal_type +
+      "</span>" +
+      "</div>"
+    );
+  }
+  var lead = imageUrl
+    ? '<img class="meal-item-thumb" src="' + imageUrl + '" alt="' + m.food_name + '" loading="lazy" />'
+    : '<span class="meal-item-icon">' + (MEAL_TYPE_ICONS[m.meal_type] || "🍽️") + "</span>";
+  return (
+    '<button type="button" class="meal-item meal-item-btn" data-meal-id="' +
+    m.id +
+    '">' +
+    lead +
+    '<span class="meal-item-name">' +
+    m.food_name +
+    "</span>" +
+    '<span class="meal-item-cals">' +
+    Math.round(parseFloat(m.calories) || 0) +
+    " kcal</span>" +
+    '<span class="meal-item-time">' +
+    t +
+    "</span>" +
+    '<span class="meal-item-type">' +
+    m.meal_type +
+    "</span>" +
+    "</button>"
+  );
 };
 
-function showNutritionCard(foodName) {
-  const key = foodName.toLowerCase().replace(/\s+/g, "_");
-  const n = NUTRITION_MAP[key];
-  if (n) {
-    // Calories
-    nCalories.textContent = n.calories;
-    // Macros
-    nProtein.textContent = n.protein.toFixed(1) + "g";
-    nFat.textContent = n.fat.toFixed(1) + "g";
-    nCarbs.textContent = n.carbs.toFixed(1) + "g";
-    // Macro bar widths (relative to max 50g protein, 50g fat, 100g carbs)
-    const pct = (v, max) => Math.min((v / max) * 100, 100);
-    barProtein.style.width = pct(n.protein, 50) + "%";
-    barFat.style.width = pct(n.fat, 50) + "%";
-    barCarbs.style.width = pct(n.carbs, 100) + "%";
-    // Health Score
-    const score = n.healthScore;
-    nHealthScore.textContent = score + "/10";
-    nHealthFill.style.width = (score / 10) * 100 + "%";
-    // Color by score
-    if (score >= 8) {
-      nHealthFill.style.background = "linear-gradient(90deg, #22c55e, #16a34a)";
-      nHealthScore.style.color = "#16a34a";
-    } else if (score >= 5) {
-      nHealthFill.style.background = "linear-gradient(90deg, #fbbf24, #f59e0b)";
-      nHealthScore.style.color = "#d97706";
-    } else {
-      nHealthFill.style.background = "linear-gradient(90deg, #f87171, #ef4444)";
-      nHealthScore.style.color = "#dc2626";
+window.bindMealItemClicks = function (container, meals, imageMap) {
+  if (!container) return;
+  container.querySelectorAll(".meal-item-btn").forEach(function (el) {
+    el.addEventListener("click", function () {
+      var id = el.getAttribute("data-meal-id");
+      var meal = (meals || []).find(function (m) {
+        return String(m.id) === String(id);
+      });
+      if (meal) {
+        meal.image_url = (imageMap || {})[meal.image_id] || null;
+        window.openMealDetail(meal);
+      }
+    });
+  });
+};
+
+window.fetchMealImages = async function (imageIds) {
+  var map = {};
+  if (!window.__supabase) return map;
+  var ids = (imageIds || []).filter(Boolean);
+  if (!ids.length) return map;
+  var CHUNK = 50;
+  for (var i = 0; i < ids.length; i += CHUNK) {
+    var { data, error } = await window.__supabase
+      .from("food_images")
+      .select("id, image_url")
+      .in("id", ids.slice(i, i + CHUNK));
+    if (!error && data) {
+      data.forEach(function (r) {
+        map[r.id] = r.image_url;
+      });
     }
-    nutritionCard.classList.remove("hidden");
-  } else {
-    nutritionCard.classList.add("hidden");
   }
-}
+  return map;
+};
+
+window.openMealDetail = function (meal) {
+  var modal = document.getElementById("mealDetailModal");
+  var img = document.getElementById("mealDetailImage");
+  var noImg = document.getElementById("mealDetailNoImage");
+  var nameEl = document.getElementById("mealDetailName");
+  var metaEl = document.getElementById("mealDetailMeta");
+  var servingEl = document.getElementById("mealDetailServing");
+  var calEl = document.getElementById("mealDetailCal");
+  var proEl = document.getElementById("mealDetailPro");
+  var fatEl = document.getElementById("mealDetailFat");
+  var carbsEl = document.getElementById("mealDetailCarbs");
+  if (!modal || !nameEl) return;
+
+  if (meal.image_url) {
+    img.src = meal.image_url;
+    img.classList.remove("hidden");
+    if (noImg) noImg.classList.add("hidden");
+  } else {
+    img.src = "";
+    img.classList.add("hidden");
+    if (noImg) noImg.classList.remove("hidden");
+  }
+
+  nameEl.textContent = meal.food_name;
+  metaEl.textContent =
+    (MEAL_TYPE_ICONS[meal.meal_type] || "🍽️") +
+    " " +
+    meal.meal_type +
+    " · " +
+    mealDetailTime(meal.logged_at);
+  servingEl.textContent = Math.round(parseFloat(meal.serving_size_g) || 0) + " g";
+  calEl.textContent = Math.round(parseFloat(meal.calories) || 0);
+  proEl.textContent = Math.round(parseFloat(meal.protein_g) || 0) + "g";
+  fatEl.textContent = Math.round(parseFloat(meal.fat_g) || 0) + "g";
+  carbsEl.textContent = Math.round(parseFloat(meal.carbs_g) || 0) + "g";
+
+  modal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+};
+
+window.closeMealDetail = function () {
+  var modal = document.getElementById("mealDetailModal");
+  if (modal) modal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+};
+
+(function wireMealDetailModal() {
+  var modal = document.getElementById("mealDetailModal");
+  if (!modal) return;
+  var closeBtn = document.getElementById("mealDetailClose");
+  var closeBtn2 = document.getElementById("mealDetailCloseBtn");
+  if (closeBtn) closeBtn.addEventListener("click", window.closeMealDetail);
+  if (closeBtn2) closeBtn2.addEventListener("click", window.closeMealDetail);
+  modal.addEventListener("click", function (e) {
+    if (e.target === modal) window.closeMealDetail();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") window.closeMealDetail();
+  });
+  // Close whenever the active view changes so it never lingers over another page
+  window.addEventListener("hashchange", window.closeMealDetail);
+})();
 
 // ── "Correct" button ────────────────────────────────────────────────────
 btnCorrect.addEventListener("click", () => {
   if (!predictionData) return;
   correctionForm.classList.add("hidden");
-  showNutritionCard(predictionData.prediction);
-  showMetaForm(predictionData.prediction);
+  confirmationChoices.classList.add("hidden");
+  btnSaveMeal.classList.remove("hidden");
+  showNutritionCard(predictionData.prediction, predictionData.nutrition);
 });
 
 // ── "Incorrect" button ──────────────────────────────────────────────────
 btnIncorrect.addEventListener("click", () => {
+  confirmationChoices.classList.add("hidden");
   correctionForm.classList.remove("hidden");
   selectedFood = null;
+  selectedFoodKey = null;
   foodSearchInput.value = "";
   foodSearchInput.focus();
   foodSelectedTag.classList.add("hidden");
@@ -453,27 +872,7 @@ function renderFoodDropdown(foods) {
     return;
   }
 
-  // Group by category
-  const modelFoods = foods.filter((f) => f.category === "model");
-  const extraFoods = foods.filter((f) => f.category === "extra");
-
-  if (modelFoods.length > 0) {
-    const header = document.createElement("div");
-    header.className = "food-dropdown-category";
-    header.textContent = "🍽️ Model Classes";
-    foodDropdownList.appendChild(header);
-
-    modelFoods.forEach((food) => appendFoodItem(food));
-  }
-
-  if (extraFoods.length > 0) {
-    const header = document.createElement("div");
-    header.className = "food-dropdown-category";
-    header.textContent = "✨ Suggestions";
-    foodDropdownList.appendChild(header);
-
-    extraFoods.forEach((food) => appendFoodItem(food));
-  }
+  foods.forEach((food) => appendFoodItem(food));
 }
 
 function appendFoodItem(food) {
@@ -481,7 +880,7 @@ function appendFoodItem(food) {
   item.className = "food-dropdown-item";
   if (selectedFood === food.name) item.classList.add("selected");
 
-  const emoji = getFoodEmoji(food.name);
+  const emoji = getFoodEmoji(food.key || food.name);
   const checkMark = selectedFood === food.name ? "✓" : "";
 
   item.innerHTML = `
@@ -490,12 +889,13 @@ function appendFoodItem(food) {
     <span class="food-item-check">${checkMark}</span>
   `;
 
-  item.addEventListener("click", () => selectFood(food.name));
+  item.addEventListener("click", () => selectFood(food.name, food.key));
   foodDropdownList.appendChild(item);
 }
 
-function selectFood(name) {
+function selectFood(name, key) {
   selectedFood = name;
+  selectedFoodKey = key || null;
   foodSearchInput.value = name;
   foodDropdown.classList.add("hidden");
   foodSearchClear.classList.remove("hidden");
@@ -533,6 +933,7 @@ foodSearchClear.addEventListener("click", () => {
   foodSearchInput.value = "";
   foodSearchClear.classList.add("hidden");
   selectedFood = null;
+  selectedFoodKey = null;
   renderFoodDropdown(ALL_FOODS);
   foodDropdown.classList.remove("hidden");
   foodSearchInput.focus();
@@ -541,6 +942,7 @@ foodSearchClear.addEventListener("click", () => {
 // Remove selected tag
 foodTagRemove.addEventListener("click", () => {
   selectedFood = null;
+  selectedFoodKey = null;
   foodSelectedTag.classList.add("hidden");
   btnSubmitCorrection.classList.add("hidden");
   foodSearchInput.value = "";
@@ -573,72 +975,20 @@ btnSubmitCorrection.addEventListener("click", () => {
     showError("Please select or type a food name.");
     return;
   }
-  correctionForm.classList.add("hidden");
-  showNutritionCard(corrected);
-  showMetaForm(corrected);
+correctionForm.classList.add("hidden");
+  confirmationChoices.classList.add("hidden");
+  btnSaveMeal.classList.remove("hidden");
+  resultFood.textContent = capitalize(corrected);
+  resultIcon.textContent = getFoodEmoji(selectedFoodKey || corrected);
+  showNutritionCard(selectedFoodKey || corrected);
 });
-
-// ── Show metadata form ──────────────────────────────────────────────────
-function showMetaForm(label) {
-  finalLabel.value = label;
-  metaForm.classList.remove("hidden");
-  metaForm.scrollIntoView({ behavior: "smooth", block: "center" });
-}
-
-// ── Submit metadata + image to /confirm ─────────────────────────────────
-metadataForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const label = finalLabel.value;
-  if (!currentFile) {
-    showError("No image file available. Please re-upload.");
-    return;
-  }
-
-  btnSave.disabled = true;
-  btnSave.textContent = "⏳ Saving...";
-
-  const formData = new FormData();
-  formData.append("file", currentFile);
-  formData.append("label", label);
-  formData.append("email", metaEmail.value.trim());
-  formData.append("country", metaCountry.value.trim());
-  formData.append("source", "web-app");
-
-  try {
-    const response = await fetch("/confirm", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || `Server error: ${response.status}`);
-    }
-
-    const result = await response.json();
-    showSuccess();
-  } catch (err) {
-    showError(err.message);
-    btnSave.disabled = false;
-    btnSave.textContent = "💾 Save to Database";
-  }
-});
-
-// ── Show success state ──────────────────────────────────────────────────
-function showSuccess() {
-  metaForm.classList.add("hidden");
-  resultCard.classList.add("hidden");
-  nutritionCard.classList.add("hidden");
-  successState.classList.remove("hidden");
-  successState.scrollIntoView({ behavior: "smooth", block: "center" });
-}
 
 // ── "Upload Another" button ─────────────────────────────────────────────
 btnNewUpload.addEventListener("click", () => {
   resetUI();
   fileInput.value = "";
-  metaEmail.value = "";
-  metaCountry.value = "";
   uploadZone.scrollIntoView({ behavior: "smooth", block: "center" });
 });
+
+// ── Load the food list for the correction dropdown ──────────────────────
+loadFoodList();

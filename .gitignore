@@ -189,13 +189,15 @@ data/100_foods/
 data_exploration/data/
 
 # Model files (large binaries)
-*.keras
-*.h5
-model/
+# *.keras
+# *.h5
+# model/
 
 # Images
 images/
 sample_food_images/
+web_app_design/
+mobile_design/
 
 # Checkpoint files
 *_checkpoint.json

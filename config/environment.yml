@@ -6,6 +6,10 @@ dependencies:
   - pip
   - pip:
       - streamlit
+      - fastapi
+      - uvicorn
+      - onnxruntime
+      - python-multipart
       - pillow
       - google-cloud-storage
       - google-api-python-client
