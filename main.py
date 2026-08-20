@@ -202,11 +202,11 @@ async def predict_food(file: UploadFile = File(...)):
 
     try:
         # ── Step 1: Food / Not-Food Detection ──
-        detector_img = tf.keras.preprocessing.image.load_img(
+        detector_img = tf.keras.utils.load_img(
             tmp_path,
             target_size=(FOOD_DETECTOR_SIZE, FOOD_DETECTOR_SIZE),
         )
-        detector_arr = tf.keras.preprocessing.image.img_to_array(detector_img)
+        detector_arr = tf.keras.utils.img_to_array(detector_img)
         # Normalize pixel values to [0, 1] — the food detector expects this range
         detector_arr = detector_arr / 255.0
         detector_arr = tf.expand_dims(detector_arr, axis=0)
@@ -226,11 +226,11 @@ async def predict_food(file: UploadFile = File(...)):
             )
 
         # ── Step 2: Food Classification ──
-        image = tf.keras.preprocessing.image.load_img(
+        image = tf.keras.utils.load_img(
             tmp_path,
             target_size=(IMG_SIZE, IMG_SIZE),
         )
-        input_arr = tf.keras.preprocessing.image.img_to_array(image)
+        input_arr = tf.keras.utils.img_to_array(image)
         input_arr = tf.expand_dims(input_arr, axis=0)
 
         predictions = model.predict(input_arr, verbose=0)

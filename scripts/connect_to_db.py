@@ -1,9 +1,17 @@
+import os
+
 import psycopg2
 from psycopg2 import Error
 
 try:
     # Connect to PostgreSQL
-    connection = psycopg2.connect(host="localhost", port="5432", database="VitaVision", user="postgres", password="root")
+    connection = psycopg2.connect(
+        host=os.getenv("DB_HOST", "127.0.0.1"),
+        port=os.getenv("DB_PORT", "5432"),
+        database=os.getenv("DB_NAME", "VitaVision"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD"),
+    )
 
     cursor = connection.cursor()
 

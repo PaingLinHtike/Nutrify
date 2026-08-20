@@ -11,7 +11,7 @@ DB_CONFIG = {
     "port": os.getenv("DB_PORT", "5432"),
     "database": os.getenv("DB_NAME", "VitaVision"),
     "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", "root"),
+    "password": os.getenv("DB_PASSWORD"),
 }
 
 
