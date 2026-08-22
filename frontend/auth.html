@@ -17,17 +17,50 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #eff6ff, #dbeafe, #ffffff);
+        position: relative;
+        overflow-x: hidden;
+        background:
+          radial-gradient(circle at 18% 20%, rgba(34, 197, 94, 0.14), transparent 30%),
+          radial-gradient(circle at 82% 78%, rgba(37, 99, 235, 0.18), transparent 34%),
+          linear-gradient(135deg, #f0fdf4, #eff6ff 52%, #ffffff);
         padding: 24px;
+      }
+      .auth-scene {
+        position: fixed;
+        z-index: 0;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .auth-scene canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .auth-scene::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          ellipse at center,
+          rgba(255, 255, 255, 0.1) 0%,
+          rgba(239, 246, 255, 0.16) 38%,
+          rgba(219, 234, 254, 0.48) 100%
+        );
       }
       .auth-container {
         width: 100%;
         max-width: 420px;
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(12px);
+        position: relative;
+        z-index: 2;
+        background: rgba(255, 255, 255, 0.82);
+        backdrop-filter: blur(18px) saturate(130%);
+        border: 1px solid rgba(255, 255, 255, 0.8);
         border-radius: 24px;
         padding: 36px 32px;
-        box-shadow: 0 20px 60px rgba(37, 99, 235, 0.15);
+        box-shadow:
+          0 28px 80px rgba(15, 23, 42, 0.16),
+          0 8px 24px rgba(37, 99, 235, 0.12);
       }
       .auth-logo {
         display: flex;
@@ -219,9 +252,27 @@
         font-size: 0.8rem;
         color: #9ca3af;
       }
+      @media (max-width: 600px) {
+        body {
+          padding: 16px;
+        }
+        .auth-container {
+          padding: 30px 24px;
+          background: rgba(255, 255, 255, 0.88);
+        }
+        .auth-scene {
+          opacity: 0.72;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .auth-scene {
+          opacity: 0.55;
+        }
+      }
     </style>
   </head>
   <body>
+    <div class="auth-scene" id="authScene" aria-hidden="true"></div>
     <div class="auth-container">
       <div class="auth-logo">
         <img src="/static/logo.png" alt="Nutrify" />
@@ -397,6 +448,273 @@
       <p class="auth-footer">Nutrify — AI-Powered Food Intelligence</p>
     </div>
 
+    <script>
+      (async function createFoodScene() {
+        const container = document.getElementById("authScene");
+        if (!container) return;
+
+        let THREE;
+        try {
+          THREE = await import(
+            "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+          );
+        } catch (error) {
+          console.warn("3D background unavailable:", error);
+          return;
+        }
+
+        const reducedMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        const isMobile = window.matchMedia("(max-width: 600px)").matches;
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+          42,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          100,
+        );
+        camera.position.set(0, 0, isMobile ? 15 : 13);
+
+        const renderer = new THREE.WebGLRenderer({
+          alpha: true,
+          antialias: !isMobile,
+          powerPreference: "high-performance",
+        });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.setClearColor(0x000000, 0);
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x86a789, 2.6));
+        const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
+        keyLight.position.set(4, 8, 10);
+        scene.add(keyLight);
+        const rimLight = new THREE.PointLight(0x60a5fa, 28, 24);
+        rimLight.position.set(-7, -3, 5);
+        scene.add(rimLight);
+
+        function material(color, roughness = 0.65) {
+          return new THREE.MeshStandardMaterial({
+            color,
+            roughness,
+            metalness: 0.02,
+            flatShading: true,
+          });
+        }
+
+        function mesh(geometry, color, roughness) {
+          return new THREE.Mesh(geometry, material(color, roughness));
+        }
+
+        function makeApple(color = 0xef4444) {
+          const group = new THREE.Group();
+          const fruit = mesh(new THREE.IcosahedronGeometry(0.72, 2), color, 0.55);
+          fruit.scale.set(1, 0.94, 1);
+          group.add(fruit);
+          const stem = mesh(new THREE.CylinderGeometry(0.055, 0.07, 0.42, 7), 0x6b4423);
+          stem.position.y = 0.79;
+          stem.rotation.z = -0.14;
+          group.add(stem);
+          const leaf = mesh(new THREE.SphereGeometry(0.2, 10, 6), 0x16a34a);
+          leaf.scale.set(1.45, 0.2, 0.65);
+          leaf.position.set(0.22, 0.84, 0);
+          leaf.rotation.z = -0.35;
+          group.add(leaf);
+          return group;
+        }
+
+        function makeOrange() {
+          const group = new THREE.Group();
+          group.add(mesh(new THREE.IcosahedronGeometry(0.7, 3), 0xf97316, 0.8));
+          const leaf = mesh(new THREE.SphereGeometry(0.19, 9, 6), 0x15803d);
+          leaf.scale.set(1.4, 0.18, 0.7);
+          leaf.position.set(0.18, 0.7, 0);
+          group.add(leaf);
+          return group;
+        }
+
+        function makeAvocado() {
+          const group = new THREE.Group();
+          const flesh = mesh(new THREE.SphereGeometry(0.72, 16, 12), 0x84cc16);
+          flesh.scale.set(0.82, 1.18, 0.34);
+          group.add(flesh);
+          const skin = mesh(new THREE.SphereGeometry(0.77, 16, 12), 0x365314);
+          skin.scale.set(0.84, 1.2, 0.23);
+          skin.position.z = -0.22;
+          group.add(skin);
+          const pit = mesh(new THREE.SphereGeometry(0.28, 14, 10), 0x92400e);
+          pit.position.set(0, -0.18, 0.29);
+          pit.scale.z = 0.55;
+          group.add(pit);
+          return group;
+        }
+
+        function makeCarrot() {
+          const group = new THREE.Group();
+          const root = mesh(new THREE.ConeGeometry(0.42, 1.55, 9), 0xf97316);
+          root.rotation.z = Math.PI;
+          root.position.y = -0.22;
+          group.add(root);
+          for (let i = -1; i <= 1; i += 1) {
+            const leaf = mesh(new THREE.ConeGeometry(0.1, 0.72, 6), 0x16a34a);
+            leaf.position.set(i * 0.13, 0.72, 0);
+            leaf.rotation.z = i * 0.28;
+            group.add(leaf);
+          }
+          return group;
+        }
+
+        function makeBlueberries() {
+          const group = new THREE.Group();
+          const positions = [
+            [-0.34, 0.08, 0], [0.34, 0.08, 0], [0, 0.4, 0.06],
+            [0, -0.32, 0.1], [-0.18, -0.05, 0.38], [0.22, 0, 0.38],
+          ];
+          positions.forEach((position) => {
+            const berry = mesh(new THREE.IcosahedronGeometry(0.34, 2), 0x3b4cca, 0.7);
+            berry.position.set(...position);
+            group.add(berry);
+          });
+          return group;
+        }
+
+        function makeEgg() {
+          const group = new THREE.Group();
+          const white = mesh(new THREE.SphereGeometry(0.82, 18, 12), 0xfffbeb, 0.85);
+          white.scale.set(1.25, 0.82, 0.15);
+          group.add(white);
+          const yolk = mesh(new THREE.SphereGeometry(0.34, 16, 10), 0xfbbf24, 0.6);
+          yolk.position.z = 0.17;
+          yolk.scale.z = 0.55;
+          group.add(yolk);
+          return group;
+        }
+
+        function makeBanana() {
+          const group = new THREE.Group();
+          const banana = mesh(
+            new THREE.TorusGeometry(0.72, 0.2, 10, 24, Math.PI * 1.35),
+            0xfacc15,
+            0.65,
+          );
+          banana.rotation.z = -0.62;
+          group.add(banana);
+          return group;
+        }
+
+        const factories = [
+          makeApple,
+          makeOrange,
+          makeAvocado,
+          makeCarrot,
+          makeBlueberries,
+          makeEgg,
+          makeBanana,
+          () => makeApple(0x22c55e),
+        ];
+        const foodCount = isMobile ? 6 : 11;
+        const foods = [];
+        for (let i = 0; i < foodCount; i += 1) {
+          const food = factories[i % factories.length]();
+          const angle = (i / foodCount) * Math.PI * 2;
+          const radius = isMobile ? 4.2 + (i % 2) : 5.4 + (i % 3) * 0.65;
+          const scale = 0.72 + (i % 4) * 0.09;
+          food.scale.setScalar(scale);
+          food.userData = {
+            angle,
+            radius,
+            height: Math.sin(angle * 2) * (isMobile ? 3.2 : 2.7),
+            speed: 0.035 + (i % 4) * 0.007,
+            phase: i * 0.83,
+          };
+          scene.add(food);
+          foods.push(food);
+        }
+
+        const dustGeometry = new THREE.BufferGeometry();
+        const dustPositions = new Float32Array((isMobile ? 45 : 90) * 3);
+        for (let i = 0; i < dustPositions.length; i += 3) {
+          dustPositions[i] = (Math.random() - 0.5) * 18;
+          dustPositions[i + 1] = (Math.random() - 0.5) * 12;
+          dustPositions[i + 2] = (Math.random() - 0.5) * 5;
+        }
+        dustGeometry.setAttribute(
+          "position",
+          new THREE.BufferAttribute(dustPositions, 3),
+        );
+        const dust = new THREE.Points(
+          dustGeometry,
+          new THREE.PointsMaterial({
+            color: 0x60a5fa,
+            size: 0.045,
+            transparent: true,
+            opacity: 0.45,
+          }),
+        );
+        scene.add(dust);
+
+        const pointer = { x: 0, y: 0 };
+        if (!reducedMotion) {
+          window.addEventListener("pointermove", (event) => {
+            pointer.x = (event.clientX / window.innerWidth - 0.5) * 0.7;
+            pointer.y = (event.clientY / window.innerHeight - 0.5) * 0.45;
+          }, { passive: true });
+        }
+
+        function positionFoods(time) {
+          foods.forEach((food, index) => {
+            const data = food.userData;
+            const angle = data.angle + time * data.speed;
+            food.position.x = Math.cos(angle) * data.radius;
+            food.position.y = data.height + Math.sin(time * 0.7 + data.phase) * 0.34;
+            food.position.z = Math.sin(angle) * 1.8 - 1.2;
+            food.rotation.x = time * (0.08 + index * 0.003);
+            food.rotation.y = time * (0.12 + index * 0.004);
+          });
+        }
+
+        let animationFrame = null;
+        const clock = new THREE.Clock();
+        function animate() {
+          const time = clock.getElapsedTime();
+          positionFoods(time);
+          camera.position.x += (pointer.x - camera.position.x) * 0.025;
+          camera.position.y += (-pointer.y - camera.position.y) * 0.025;
+          camera.lookAt(0, 0, 0);
+          dust.rotation.z = time * 0.015;
+          renderer.render(scene, camera);
+          animationFrame = requestAnimationFrame(animate);
+        }
+
+        function resize() {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+          if (reducedMotion) renderer.render(scene, camera);
+        }
+        window.addEventListener("resize", resize, { passive: true });
+
+        if (reducedMotion) {
+          positionFoods(0);
+          camera.lookAt(0, 0, 0);
+          renderer.render(scene, camera);
+        } else {
+          animate();
+          document.addEventListener("visibilitychange", () => {
+            if (document.hidden && animationFrame !== null) {
+              cancelAnimationFrame(animationFrame);
+              animationFrame = null;
+            } else if (!document.hidden && animationFrame === null) {
+              clock.getDelta();
+              animate();
+            }
+          });
+        }
+      })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script>
       (function () {
