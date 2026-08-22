@@ -175,6 +175,7 @@ google-*-creds.json
 *-creds.json
 *.key
 .env*
+supabase/.temp/
 .streamlit/*
 !.streamlit/config.toml
 !.streamlit/secrets.example.toml
