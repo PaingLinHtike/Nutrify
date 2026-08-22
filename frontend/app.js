@@ -103,7 +103,7 @@ const FOOD_CATEGORIES = [
     foods: [
       "apple", "apricot", "avocado", "banana", "blackberries",
       "blueberries", "cantaloupe", "cherries", "coconut", "dates",
-      "figs", //"grapefruit", 
+      "figs", //"grapefruit",
       "grapes", "kiwi", "mango", "orange",
       "papaya", "peach", "pear", "pineapple", "plum", "pomegranate",
       "raspberries", "strawberries", "watermelon",
@@ -124,9 +124,9 @@ const FOOD_CATEGORIES = [
     name: "Meat & Poultry",
     emoji: "🍖",
     foods: [
-      "bacon", "beef", //"chicken breast", 
+      "bacon", "beef", //"chicken breast",
       "chicken thigh", "chicken wings",
-      "duck breast", //"ham", 
+      "duck breast", //"ham",
       "lamb chop", "pork chop", "turkey breast",
     ],
   },
@@ -142,7 +142,7 @@ const FOOD_CATEGORIES = [
     name: "Grains & Carbs",
     emoji: "🍞",
     foods: [
-      "bagel", "bread", "brown rice", "noodles", "oats", //"pasta", 
+      "bagel", "bread", "brown rice", "noodles", "oats", //"pasta",
       "popcorn",
       "rice",
     ],
@@ -151,7 +151,7 @@ const FOOD_CATEGORIES = [
     name: "Dairy & Eggs",
     emoji: "🥛",
     foods: [
-      "butter", "cheddar cheese", "egg", "milk", //"mozzarella cheese", 
+      "butter", "cheddar cheese", "egg", "milk", //"mozzarella cheese",
       "yogurt",
     ],
   },
