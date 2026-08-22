@@ -22,7 +22,7 @@
         }
       })();
     </script>
-    <link rel="stylesheet" href="/static/styles.css?v=20260816c" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260821a" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
@@ -281,27 +281,20 @@
               </div>
             </div>
 
-            <section class="supported-foods" aria-labelledby="supportedFoodsTitle">
-              <div class="supported-foods-heading">
-                <span class="supported-foods-icon">&#10024;</span>
-                <div>
-                  <h3 id="supportedFoodsTitle">Foods Our AI Recognizes</h3>
-                  <p>Scan or upload one of these 10 supported foods.</p>
-                </div>
-              </div>
-              <ul class="supported-foods-list">
-                <li>🍗 Chicken Wings</li>
-                <li>🍎 Apple</li>
-                <li>🍌 Banana</li>
-                <li>🥩 Beef</li>
-                <li>🥕 Carrots</li>
-                <li>🥚 Egg</li>
-                <li>🍓 Strawberries</li>
-                <li>🫐 Blueberries</li>
-                <li>🍄 Mushrooms</li>
-                <li>🍯 Honey</li>
-              </ul>
-            </section>
+            <button
+              type="button"
+              class="food-catalog-trigger"
+              id="btnFoodCatalog"
+              aria-haspopup="dialog"
+              aria-controls="foodCatalogModal"
+            >
+              <span class="food-catalog-trigger-icon" aria-hidden="true">🍽️</span>
+              <span class="food-catalog-trigger-copy">
+                <strong>Browse All 94 Foods</strong>
+                <small>See every food our AI recognizes, grouped by category</small>
+              </span>
+              <span class="food-catalog-trigger-arrow" aria-hidden="true">→</span>
+            </button>
 
             <!-- ═══ Spinner ═══ -->
             <div class="spinner-container hidden" id="spinnerContainer">
@@ -1148,6 +1141,33 @@
           </button>
         </div>
       </div>
+
+      <div
+        class="food-catalog-modal hidden"
+        id="foodCatalogModal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="foodCatalogTitle"
+      >
+        <div class="food-catalog-dialog" tabindex="-1">
+          <header class="food-catalog-header">
+            <div>
+              <p class="food-catalog-eyebrow">Nutrify recognition catalog</p>
+              <h2 id="foodCatalogTitle">94 Foods Our AI Recognizes</h2>
+              <p>Browse all supported foods across 9 categories.</p>
+            </div>
+            <button
+              type="button"
+              class="food-catalog-close"
+              id="btnCloseFoodCatalog"
+              aria-label="Close food catalog"
+            >
+              ✕
+            </button>
+          </header>
+          <div class="food-catalog-body" id="foodCatalogBody"></div>
+        </div>
+      </div>
     </div>
 
     <!-- ═══ Onboarding Overlay ═══ -->
@@ -1232,7 +1252,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="/static/upload.js?v=20260819a"></script>
-<script src="/static/app.js?v=20260819a"></script>
+<script src="/static/app.js?v=20260821a"></script>
     <script src="/static/tracker.js?v=20260816e"></script>
     <script src="/static/nav.js?v=20260814"></script>
     <script src="/static/onboarding.js?v=20260814"></script>

@@ -55,6 +55,10 @@ const saveMealNote = document.getElementById("saveMealNote");
 const nutritionServingWeight = document.getElementById("nutritionServingWeight");
 const successState = document.getElementById("successState");
 const btnNewUpload = document.getElementById("btnNewUpload");
+const btnFoodCatalog = document.getElementById("btnFoodCatalog");
+const foodCatalogModal = document.getElementById("foodCatalogModal");
+const foodCatalogBody = document.getElementById("foodCatalogBody");
+const btnCloseFoodCatalog = document.getElementById("btnCloseFoodCatalog");
 
 // ── State ───────────────────────────────────────────────────────────────
 let currentFile = null; // Raw File object from input / drop
@@ -91,6 +95,87 @@ const FOOD_EMOJI = {
   cake: "🎂",
   default: "🍽️",
 };
+
+const FOOD_CATEGORIES = [
+  {
+    name: "Fruits",
+    emoji: "🍎",
+    foods: [
+      "apple", "apricot", "avocado", "banana", "blackberries",
+      "blueberries", "cantaloupe", "cherries", "coconut", "dates",
+      "figs", //"grapefruit", 
+      "grapes", "kiwi", "mango", "orange",
+      "papaya", "peach", "pear", "pineapple", "plum", "pomegranate",
+      "raspberries", "strawberries", "watermelon",
+    ],
+  },
+  {
+    name: "Vegetables",
+    emoji: "🥦",
+    foods: [
+      "asparagus", "beetroot", "bell pepper", "broccoli", "cabbage",
+      "carrots", "cauliflower", "celery", "corn", "cucumber", "eggplant",
+      "garlic", "green beans", "lettuce", "mushrooms", "onion", "peas",
+      "potato", "pumpkin", "radish", "spinach", "sweet potato", "tomato",
+      "turnip", "zucchini",
+    ],
+  },
+  {
+    name: "Meat & Poultry",
+    emoji: "🍖",
+    foods: [
+      "bacon", "beef", //"chicken breast", 
+      "chicken thigh", "chicken wings",
+      "duck breast", //"ham", 
+      "lamb chop", "pork chop", "turkey breast",
+    ],
+  },
+  {
+    name: "Seafood",
+    emoji: "🐟",
+    foods: [
+      "cod", "crab", "lobster", "salmon", "sardines", "shrimp", "squid",
+      "tilapia", "tuna",
+    ],
+  },
+  {
+    name: "Grains & Carbs",
+    emoji: "🍞",
+    foods: [
+      "bagel", "bread", "brown rice", "noodles", "oats", //"pasta", 
+      "popcorn",
+      "rice",
+    ],
+  },
+  {
+    name: "Dairy & Eggs",
+    emoji: "🥛",
+    foods: [
+      "butter", "cheddar cheese", "egg", "milk", //"mozzarella cheese", 
+      "yogurt",
+    ],
+  },
+  {
+    name: "Beans & Plant Protein",
+    emoji: "🫘",
+    foods: [
+      "black beans", "chickpeas", "kidney beans", "lentils", "soybeans", //"tofu",
+    ],
+  },
+  {
+    name: "Nuts & Seeds",
+    emoji: "🌰",
+    foods: [
+      "almonds", "cashews", "chia seeds", "peanuts", "pistachios",
+      "pumpkin seeds", "sesame seeds", "sunflower seeds", "walnuts",
+    ],
+  },
+  {
+    name: "Others",
+    emoji: "🍯",
+    foods: ["honey", "peanut butter"],
+  },
+];
 
 // ── Food list (loaded from Supabase food_nutrition) ─────────────────────
 let ALL_FOODS = [];
@@ -139,6 +224,63 @@ function capitalize(str) {
 
 function formatPct(val) {
   return (val * 100).toFixed(1) + "%";
+}
+
+let foodCatalogRendered = false;
+
+function renderFoodCatalog() {
+  if (foodCatalogRendered || !foodCatalogBody) return;
+
+  FOOD_CATEGORIES.forEach((category) => {
+    const section = document.createElement("section");
+    section.className = "food-category-card";
+
+    const heading = document.createElement("h3");
+    heading.className = "food-category-heading";
+    heading.innerHTML = `<span aria-hidden="true">${category.emoji}</span> ${category.name} <small>${category.foods.length}</small>`;
+
+    const list = document.createElement("ul");
+    list.className = "food-category-list";
+    category.foods.forEach((food) => {
+      const item = document.createElement("li");
+      item.textContent = capitalize(food);
+      list.appendChild(item);
+    });
+
+    section.append(heading, list);
+    foodCatalogBody.appendChild(section);
+  });
+
+  foodCatalogRendered = true;
+}
+
+function openFoodCatalog() {
+  renderFoodCatalog();
+  foodCatalogModal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  btnFoodCatalog.setAttribute("aria-expanded", "true");
+  btnCloseFoodCatalog.focus();
+}
+
+function closeFoodCatalog() {
+  if (!foodCatalogModal || foodCatalogModal.classList.contains("hidden")) return;
+  foodCatalogModal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+  btnFoodCatalog.setAttribute("aria-expanded", "false");
+  btnFoodCatalog.focus();
+}
+
+if (btnFoodCatalog && foodCatalogModal && btnCloseFoodCatalog) {
+  btnFoodCatalog.setAttribute("aria-expanded", "false");
+  btnFoodCatalog.addEventListener("click", openFoodCatalog);
+  btnCloseFoodCatalog.addEventListener("click", closeFoodCatalog);
+  foodCatalogModal.addEventListener("click", (event) => {
+    if (event.target === foodCatalogModal) closeFoodCatalog();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeFoodCatalog();
+  });
+  window.addEventListener("hashchange", closeFoodCatalog);
 }
 
 async function readJsonResponse(response) {
