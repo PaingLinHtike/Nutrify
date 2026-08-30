@@ -296,6 +296,25 @@ async function readJsonResponse(response) {
   }
 }
 
+function clearUploadImage() {
+  uploadZone.classList.remove("has-image");
+  uploadContent.classList.remove("hidden");
+  uploadPreview.classList.add("hidden");
+  previewImage.removeAttribute("src");
+  fileInput.value = "";
+  const scanOverlay = document.getElementById("scanOverlay");
+  if (scanOverlay) scanOverlay.classList.add("hidden");
+  currentFile = null;
+  predictionData = null;
+  currentSource = "gallery";
+  currentNutritionPer100g = null;
+  window.__foodImageFile = null;
+  window.__foodImageSource = null;
+  window.__foodImageConfidence = null;
+}
+
+window.clearUploadImage = clearUploadImage;
+
 function resetUI() {
   // Hide all dynamic sections
   spinnerContainer.classList.add("hidden");
@@ -305,17 +324,7 @@ function resetUI() {
   successState.classList.add("hidden");
   confirmationChoices.classList.remove("hidden");
   btnSaveMeal.classList.add("hidden");
-  uploadZone.classList.remove("has-image");
-  uploadContent.classList.remove("hidden");
-  uploadPreview.classList.add("hidden");
-  previewImage.src = "";
-currentFile = null;
-  predictionData = null;
-  currentSource = "gallery";
-  currentNutritionPer100g = null;
-  window.__foodImageFile = null;
-  window.__foodImageSource = null;
-  window.__foodImageConfidence = null;
+  clearUploadImage();
   saveMeal.classList.add("hidden");
   servingSize.value = "100";
   saveMealNote.textContent = "";
@@ -1128,7 +1137,6 @@ correctionForm.classList.add("hidden");
 // ── "Upload Another" button ─────────────────────────────────────────────
 btnNewUpload.addEventListener("click", () => {
   resetUI();
-  fileInput.value = "";
   uploadZone.scrollIntoView({ behavior: "smooth", block: "center" });
 });
 

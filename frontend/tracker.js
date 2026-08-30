@@ -116,6 +116,7 @@
           (imageUploadFailed ? " (image upload failed)" : "");
         refreshTracker();
         loadTodayMeals();
+        if (window.clearUploadImage) window.clearUploadImage();
         showMealSuccess(foodName);
       }
 
