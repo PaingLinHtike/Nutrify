@@ -3156,13 +3156,160 @@ body:not(.authenticated) .app-food-scene {
   outline-offset: 2px;
 }
 
+.food-catalog-search {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 28px;
+  border-bottom: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.food-catalog-search-field {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 11px;
+  padding: 0 14px;
+  border: 1px solid #d7e0ee;
+  border-radius: 14px;
+  background: #f8fafc;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.food-catalog-search-field:focus-within {
+  border-color: #3b82f6;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12),
+    0 6px 18px rgba(37, 99, 235, 0.08);
+}
+
+.food-catalog-search-icon {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #64748b;
+}
+
+.food-catalog-search-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.food-catalog-search-field input {
+  min-width: 0;
+  height: 48px;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 550;
+}
+
+.food-catalog-search-field input::placeholder {
+  color: #94a3b8;
+}
+
+.food-catalog-search-field input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.food-catalog-search-clear {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: #e8eef7;
+  color: #475569;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.food-catalog-search-clear:hover {
+  background: #dbeafe;
+  color: #2563eb;
+  transform: scale(1.05);
+}
+
+.food-catalog-search-status {
+  min-width: 132px;
+  padding: 9px 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .food-catalog-body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
-  max-height: calc(min(86vh, 860px) - 118px);
+  max-height: calc(min(86vh, 860px) - 195px);
   padding: 20px;
   overflow-y: auto;
+  scrollbar-color: #94a3b8 transparent;
+  scrollbar-width: thin;
+}
+
+.food-catalog-body::-webkit-scrollbar {
+  width: 9px;
+}
+
+.food-catalog-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.food-catalog-body::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: #a8b3c3;
+  background-clip: padding-box;
+}
+
+.food-catalog-empty {
+  grid-column: 1 / -1;
+  padding: 54px 20px;
+  color: #64748b;
+  text-align: center;
+}
+
+.food-catalog-empty span {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 2.4rem;
+}
+
+.food-catalog-empty strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #1e293b;
+  font-size: 1rem;
+}
+
+.food-catalog-empty p {
+  font-size: 0.8rem;
 }
 
 .food-category-card {
@@ -4062,6 +4209,42 @@ html[data-theme="dark"] .food-catalog-header {
   background: linear-gradient(135deg, #1e293b, #172033);
 }
 
+html[data-theme="dark"] .food-catalog-search {
+  border-color: #334155;
+  background: #172033;
+}
+
+html[data-theme="dark"] .food-catalog-search-field {
+  border-color: #475569;
+  background: #0f172a;
+}
+
+html[data-theme="dark"] .food-catalog-search-field:focus-within {
+  border-color: #60a5fa;
+  background: #111c31;
+}
+
+html[data-theme="dark"] .food-catalog-search-field input,
+html[data-theme="dark"] .food-catalog-empty strong {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .food-catalog-search-clear {
+  background: #334155;
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .food-catalog-search-status,
+html[data-theme="dark"] .food-catalog-empty {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .food-catalog-search-status {
+  border-color: #1e3a8a;
+  background: rgba(30, 58, 138, 0.35);
+  color: #bfdbfe;
+}
+
 html[data-theme="dark"] .food-catalog-close,
 html[data-theme="dark"] .food-category-card {
   border-color: #334155;
@@ -4691,9 +4874,23 @@ body {
     padding: 20px 18px 16px;
   }
 
+  .food-catalog-search {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+  }
+
+  .food-catalog-search-status {
+    align-self: flex-start;
+    min-width: 0;
+    padding: 6px 10px;
+    text-align: left;
+  }
+
   .food-catalog-body {
     grid-template-columns: 1fr;
-    max-height: calc(100dvh - 108px);
+    max-height: calc(100dvh - 190px);
     padding: 14px;
   }
 

@@ -59,6 +59,16 @@ const btnFoodCatalog = document.getElementById("btnFoodCatalog");
 const foodCatalogModal = document.getElementById("foodCatalogModal");
 const foodCatalogBody = document.getElementById("foodCatalogBody");
 const btnCloseFoodCatalog = document.getElementById("btnCloseFoodCatalog");
+const foodCatalogSearchInput = document.getElementById(
+  "foodCatalogSearchInput",
+);
+const foodCatalogSearchClear = document.getElementById(
+  "foodCatalogSearchClear",
+);
+const foodCatalogSearchStatus = document.getElementById(
+  "foodCatalogSearchStatus",
+);
+const foodCatalogEmpty = document.getElementById("foodCatalogEmpty");
 
 // ── State ───────────────────────────────────────────────────────────────
 let currentFile = null; // Raw File object from input / drop
@@ -234,6 +244,7 @@ function renderFoodCatalog() {
   FOOD_CATEGORIES.forEach((category) => {
     const section = document.createElement("section");
     section.className = "food-category-card";
+    section.dataset.category = category.name.toLowerCase();
 
     const heading = document.createElement("h3");
     heading.className = "food-category-heading";
@@ -244,6 +255,7 @@ function renderFoodCatalog() {
     category.foods.forEach((food) => {
       const item = document.createElement("li");
       item.textContent = capitalize(food);
+      item.dataset.foodName = food.toLowerCase();
       list.appendChild(item);
     });
 
@@ -254,12 +266,40 @@ function renderFoodCatalog() {
   foodCatalogRendered = true;
 }
 
+function filterFoodCatalog(value) {
+  if (!foodCatalogRendered) renderFoodCatalog();
+
+  const query = value.trim().toLowerCase();
+  let matchCount = 0;
+
+  foodCatalogBody.querySelectorAll(".food-category-card").forEach((card) => {
+    let categoryMatches = 0;
+    card.querySelectorAll(".food-category-list li").forEach((item) => {
+      const matches = !query || item.dataset.foodName.includes(query);
+      item.classList.toggle("hidden", !matches);
+      if (matches) categoryMatches += 1;
+    });
+
+    card.classList.toggle("hidden", categoryMatches === 0);
+    card.querySelector(".food-category-heading small").textContent =
+      categoryMatches;
+    matchCount += categoryMatches;
+  });
+
+  foodCatalogSearchClear.classList.toggle("hidden", !query);
+  foodCatalogEmpty.classList.toggle("hidden", matchCount !== 0);
+  foodCatalogSearchStatus.textContent = query
+    ? `${matchCount} ${matchCount === 1 ? "food" : "foods"} found`
+    : `${matchCount} foods available`;
+}
+
 function openFoodCatalog() {
   renderFoodCatalog();
+  filterFoodCatalog(foodCatalogSearchInput.value);
   foodCatalogModal.classList.remove("hidden");
   document.body.classList.add("modal-open");
   btnFoodCatalog.setAttribute("aria-expanded", "true");
-  btnCloseFoodCatalog.focus();
+  foodCatalogSearchInput.focus();
 }
 
 function closeFoodCatalog() {
@@ -267,6 +307,8 @@ function closeFoodCatalog() {
   foodCatalogModal.classList.add("hidden");
   document.body.classList.remove("modal-open");
   btnFoodCatalog.setAttribute("aria-expanded", "false");
+  foodCatalogSearchInput.value = "";
+  filterFoodCatalog("");
   btnFoodCatalog.focus();
 }
 
@@ -274,6 +316,14 @@ if (btnFoodCatalog && foodCatalogModal && btnCloseFoodCatalog) {
   btnFoodCatalog.setAttribute("aria-expanded", "false");
   btnFoodCatalog.addEventListener("click", openFoodCatalog);
   btnCloseFoodCatalog.addEventListener("click", closeFoodCatalog);
+  foodCatalogSearchInput.addEventListener("input", (event) => {
+    filterFoodCatalog(event.target.value);
+  });
+  foodCatalogSearchClear.addEventListener("click", () => {
+    foodCatalogSearchInput.value = "";
+    filterFoodCatalog("");
+    foodCatalogSearchInput.focus();
+  });
   foodCatalogModal.addEventListener("click", (event) => {
     if (event.target === foodCatalogModal) closeFoodCatalog();
   });

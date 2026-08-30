@@ -22,7 +22,7 @@
         }
       })();
     </script>
-    <link rel="stylesheet" href="/static/styles.css?v=20260822a" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260830a" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
@@ -1166,7 +1166,43 @@
               ✕
             </button>
           </header>
-          <div class="food-catalog-body" id="foodCatalogBody"></div>
+          <div class="food-catalog-search" role="search">
+            <div class="food-catalog-search-field">
+              <span class="food-catalog-search-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <circle cx="11" cy="11" r="6.5"></circle>
+                  <path d="m16 16 4 4"></path>
+                </svg>
+              </span>
+              <input
+                type="search"
+                id="foodCatalogSearchInput"
+                aria-label="Search supported foods"
+                placeholder="Search supported foods..."
+                autocomplete="off"
+              />
+              <button
+                type="button"
+                class="food-catalog-search-clear hidden"
+                id="foodCatalogSearchClear"
+                aria-label="Clear food search"
+              >
+                ✕
+              </button>
+            </div>
+            <span
+              class="food-catalog-search-status"
+              id="foodCatalogSearchStatus"
+              aria-live="polite"
+            ></span>
+          </div>
+          <div class="food-catalog-body" id="foodCatalogBody">
+            <div class="food-catalog-empty hidden" id="foodCatalogEmpty">
+              <span aria-hidden="true">🍽️</span>
+              <strong>No supported foods found</strong>
+              <p>Try another name, such as apple, chicken, or rice.</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1253,7 +1289,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="/static/upload.js?v=20260819a"></script>
-<script src="/static/app.js?v=20260830b"></script>
+<script src="/static/app.js?v=20260830c"></script>
     <script src="/static/food-scene.js?v=20260822a"></script>
     <script src="/static/tracker.js?v=20260830a"></script>
     <script src="/static/nav.js?v=20260814"></script>
